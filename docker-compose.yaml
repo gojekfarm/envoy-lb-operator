@@ -1,0 +1,23 @@
+version: '3.2'
+
+networks:
+  mesh:
+
+services:
+  envoy:
+    image: envoyproxy/envoy-alpine
+    ports:
+      - "9000:9000"
+      - "443:9443"
+    volumes:
+      - ./example:/etc/envoy
+    networks:
+      - mesh
+
+  envoy-lb-operator:
+    build:
+      context: .
+    ports:
+      - "18000:18000"
+    networks:
+      - mesh
