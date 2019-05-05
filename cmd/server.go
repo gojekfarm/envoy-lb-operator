@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
+	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"github.com/gojekfarm/envoy-lb-operator/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -45,17 +46,24 @@ func initConfig() {
 func serve(cmd *cobra.Command, args []string) {
 	log.Printf("Starting control plane")
 
-	snap := envoy.NewSnapshot("nodeID")
+	lb := envoy.NewLB("nodeID")
 
 	ctx := context.Background()
 
 	// start the xDS server
-	xdsServer := server.New(snap.Config, 18000)
+	xdsServer := server.New(lb.Config, 18000)
 	go xdsServer.Run(ctx)
 	xdsServer.WaitForRequests()
 	go xdsServer.Report()
+	go lb.HandleEvents()
+
+	//test data for now.
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+		EventType: envoy.ADDED,
+	})
 	for {
-		snap.Store()
+		lb.Snapshot()
 		time.Sleep(10 * time.Second)
 		reader := bufio.NewReader(os.Stdin)
 		_, _ = reader.ReadString('\n')
