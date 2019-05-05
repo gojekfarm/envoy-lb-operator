@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-lb-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: envoy-lb-operator
+  template:
+    metadata:
+      labels:
+        app: envoy-lb-operator
+    spec:
+      serviceAccountName: "envoy-lb-operator"
+      containers:
+      - name: envoy-lb-operator
+        image: envoy-lb-operator
+        imagePullPolicy: IfNotPresent

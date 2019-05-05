@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
@@ -12,6 +14,8 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var cliCmd = &cobra.Command{
@@ -30,9 +34,14 @@ var serveCmd = &cobra.Command{
 }
 
 var debug bool
+var masterurl string
+var config string
 
 func init() {
 	cliCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "use debug level logs")
+	serveCmd.Flags().StringVarP(&masterurl, "master", "m", "", "Master URL for Kube API server")
+	serveCmd.Flags().StringVarP(&config, "kubeconfig", "c", "", "Help message for toggle")
+
 	cobra.OnInitialize(initConfig)
 	cliCmd.AddCommand(serveCmd)
 }
@@ -43,12 +52,26 @@ func initConfig() {
 	}
 }
 
+func cancelOnInterrupt(cancelFn func()) {
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+	cancelFn()
+}
+
 func serve(cmd *cobra.Command, args []string) {
 	log.Printf("Starting control plane")
+	cfg, err := clientcmd.BuildConfigFromFlags(masterurl, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kubeClient, _ := kubernetes.NewForConfig(cfg)
 
 	lb := envoy.NewLB("nodeID")
 
 	ctx := context.Background()
+	go cancelOnInterrupt(server.StartKubehandler(kubeClient, lb.SvcTrigger))
 
 	// start the xDS server
 	xdsServer := server.New(lb.Config, 18000)

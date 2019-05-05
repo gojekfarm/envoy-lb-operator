@@ -5,6 +5,8 @@ import (
 
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 //Type is the type of service
@@ -44,4 +46,13 @@ func (s Service) Target(regex string) cp.Target {
 //DefaultTarget represents the vhost target
 func (s Service) DefaultTarget() cp.Target {
 	return cp.Target{Host: s.Address, Regex: "/", ClusterName: s.clusterName()}
+}
+
+func ServiceType(svc *corev1.Service) Type {
+	serviceTypeAnnotation := svc.GetAnnotations()["envoy-lb-operator.gojektech.k8s.io/service-type"]
+	if serviceTypeAnnotation == "grpc" {
+		return GRPC
+	}
+	return HTTP
+
 }
