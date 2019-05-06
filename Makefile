@@ -50,8 +50,12 @@ docker-dev: docker-build
 	$(MAKE) kube-deploy
 
 kube-deploy:
+	helm delete --purge lb
 	kubectl delete deployment/$(APP) | true
+	kubectl delete svc/$(APP) | true
 	kubectl apply -f dev/$(APP)-deployment.yaml
+	kubectl apply -f dev/$(APP)-svc.yaml
+	helm install --name lb stable/envoy -f ./dev/envoy-values.yaml
 
 minikube-dev:
 	@eval $$(SHELL=bash minikube docker-env) ;\

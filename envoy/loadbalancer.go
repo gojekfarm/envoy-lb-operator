@@ -10,6 +10,7 @@ import (
 	kube "github.com/gojekfarm/envoy-lb-operator/kube"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 //LBEventType is the type of event impacting the LB
@@ -44,7 +45,9 @@ func (lb *LoadBalancer) Trigger(evt LBEvent) {
 }
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
-	lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc)}})
+	if svc.Spec.ClusterIP == v1.ClusterIPNone {
+		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc)}})
+	}
 }
 
 func (lb *LoadBalancer) Close() {

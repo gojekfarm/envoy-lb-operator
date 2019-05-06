@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-greeter
+  labels:
+    app: grpc-greeter
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: grpc-greeter
+  template:
+    metadata:
+      labels:
+        app: grpc-greeter
+    spec:
+      containers:
+      - name: grpc-greeter
+        image: gojektech/grpc-greeter:latest
+        args:
+          - ./grpc-greeter
+          - server
+        ports:
+        - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: grpc-greeter
+  labels:
+    heritage: envoy-lb
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: grpc-greeter
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080

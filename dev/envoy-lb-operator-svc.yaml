@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: envoy-lb-operator
+spec:
+  selector:
+    app: envoy-lb-operator
+  ports:
+  - protocol: TCP
+    port: 18000
+    targetPort: 18000
