@@ -67,24 +67,28 @@ func (lb *LoadBalancer) HandleEvents() {
 
 func (lb *LoadBalancer) Snapshot() {
 	atomic.AddInt32(&lb.ConfigVersion, 1)
-	// svc := kube.Service{Address: "svc", Port: uint32(443), Type: kube.GRPC}
-	var targets []cp.Target
 	var clusters []cache.Resource
-	for _, svc := range lb.upstreams {
-		clusters = append(clusters, svc.Cluster())
-		targets = append(targets, svc.DefaultTarget())
-	}
+	var targets []cp.Target
+	// svc := kube.Service{Address: "svc", Port: uint32(443), Type: kube.GRPC}
+	if len(lb.upstreams) > 0 {
+		for _, svc := range lb.upstreams {
+			clusters = append(clusters, svc.Cluster())
+			targets = append(targets, svc.DefaultTarget())
+		}
+	} // else {
+	// 	svc := kube.Service{Address: "www.google.com", Port: uint32(443), Type: kube.HTTP}
+	// 	clusters = append(clusters, svc.Cluster())
+	// 	targets = append(targets, svc.DefaultTarget())
+	// }
 
 	vh := cp.VHost("local_service", []string{"*"}, targets)
 	cm := cp.ConnectionManager("local_route", []route.VirtualHost{vh})
-	var l, err = cp.Listener("listener_grpc", "0.0.0.0", 8080, cm)
+	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 8080, cm)
 
 	if err != nil {
 		panic(err)
 	}
-
-	snapshot := cache.NewSnapshot(fmt.Sprint(lb.ConfigVersion), nil, clusters, nil, []cache.Resource{l})
-
+	snapshot := cache.NewSnapshot(fmt.Sprint(lb.ConfigVersion), nil, clusters, nil, []cache.Resource{listener})
 	lb.Config.SetSnapshot(lb.nodeID, snapshot)
 }
 

@@ -66,13 +66,20 @@ func serve(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
-	kubeClient, _ := kubernetes.NewForConfig(cfg)
-
+	kubeClient, err := kubernetes.NewForConfig(cfg)
 	lb := envoy.NewLB("nodeID")
+	if err != nil {
+		//test data for now.
+		lb.Trigger(envoy.LBEvent{
+			Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+			EventType: envoy.ADDED,
+		})
+
+	} else {
+		go cancelOnInterrupt(server.StartKubehandler(kubeClient, lb.SvcTrigger))
+	}
 
 	ctx := context.Background()
-	go cancelOnInterrupt(server.StartKubehandler(kubeClient, lb.SvcTrigger))
-
 	// start the xDS server
 	xdsServer := server.New(lb.Config, 18000)
 	go xdsServer.Run(ctx)
@@ -80,11 +87,6 @@ func serve(cmd *cobra.Command, args []string) {
 	go xdsServer.Report()
 	go lb.HandleEvents()
 
-	//test data for now.
-	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
-		EventType: envoy.ADDED,
-	})
 	for {
 		lb.Snapshot()
 		time.Sleep(10 * time.Second)

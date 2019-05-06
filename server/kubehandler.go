@@ -20,7 +20,7 @@ func filterServices(opt *metav1.ListOptions) {
 
 func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *corev1.Service)) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*30, v1.NamespaceAll, filterServices)
+	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, v1.NamespaceAll, filterServices)
 	informer := kubeInformerFactory.Core().V1().Services().Informer()
 	discoveryHandler := &handler.Discovery{
 		CoreClient: client.CoreV1(),

@@ -49,10 +49,12 @@ docker-dev: docker-build
 	kubectl config use-context docker-for-desktop
 	$(MAKE) kube-deploy
 
-kube-deploy:
-	helm delete --purge lb
+kube-del:
+	helm delete --purge lb | true
 	kubectl delete deployment/$(APP) | true
 	kubectl delete svc/$(APP) | true
+
+kube-deploy: kube-del
 	kubectl apply -f dev/$(APP)-deployment.yaml
 	kubectl apply -f dev/$(APP)-svc.yaml
 	helm install --name lb stable/envoy -f ./dev/envoy-values.yaml
