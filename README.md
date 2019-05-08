@@ -1,3 +1,4 @@
+# Envoy LB Operator  [![CircleCI](https://circleci.com/gh/gojekfarm/envoy-lb-operator.svg?style=svg)](https://circleci.com/gh/gojekfarm/envoy-lb-operator)
 # Once
 `kubectl create serviceaccount envoy-lb-operator`
 `kubectl create clusterrolebinding envoy-lb-operator-binding --clusterrole=view --serviceaccount=default:envoy-lb-operator`
