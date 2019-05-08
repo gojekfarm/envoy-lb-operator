@@ -22,13 +22,13 @@ func TestGRPCIsHttp2Cluster(t *testing.T) {
 func TestDefaultTarget(t *testing.T) {
 	target := kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC}.DefaultTarget()
 	assert.Equal(t, "foo", target.Host)
-	assert.Equal(t, "/", target.Regex)
+	assert.Equal(t, "/", target.Prefix)
 	assert.Equal(t, "foo_cluster", target.ClusterName)
 }
 
 func TestTarget(t *testing.T) {
 	target := kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC}.Target("/foo")
 	assert.Equal(t, "foo", target.Host)
-	assert.Equal(t, "/foo", target.Regex)
+	assert.Equal(t, "/foo", target.Prefix)
 	assert.Equal(t, "foo_cluster", target.ClusterName)
 }

@@ -42,7 +42,7 @@ service:
     # service.beta.kubernetes.io/aws-load-balancer-internal: "true"
   ports:
     n0:
-      port: 10000
+      port: 8080
       targetPort: n0
       protocol: TCP
 
@@ -51,7 +51,7 @@ ports:
     containerPort: 9000
     protocol: TCP
   n0:
-    containerPort: 10000
+    containerPort: 8080
     protocol: TCP
 
 resources: {}

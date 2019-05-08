@@ -15,7 +15,7 @@ func TestConnectionManager(t *testing.T) {
 	vhosts := []route.VirtualHost{cp.VHost("foo", []string{"*"}, []cp.Target{
 		{
 			Host:        "foo",
-			Regex:       "/foo",
+			Prefix:      "/foo",
 			ClusterName: "foo_cluster",
 		},
 	})}

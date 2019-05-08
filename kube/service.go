@@ -39,13 +39,13 @@ func (s Service) Cluster() *v2.Cluster {
 }
 
 //Target represents the vhost target
-func (s Service) Target(regex string) cp.Target {
-	return cp.Target{Host: s.Address, Regex: regex, ClusterName: s.clusterName()}
+func (s Service) Target(prefix string) cp.Target {
+	return cp.Target{Host: s.Address, Prefix: prefix, ClusterName: s.clusterName()}
 }
 
 //DefaultTarget represents the vhost target
 func (s Service) DefaultTarget() cp.Target {
-	return cp.Target{Host: s.Address, Regex: "/", ClusterName: s.clusterName()}
+	return cp.Target{Host: s.Address, Prefix: "/", ClusterName: s.clusterName()}
 }
 
 func ServiceType(svc *corev1.Service) Type {
