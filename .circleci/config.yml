@@ -42,6 +42,7 @@ jobs:
           name: Install Dependencies
           command: |
             make setup
+            go mod vendor
       - save_cache:
           paths:
             - ./vendor
