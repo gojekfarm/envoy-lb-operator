@@ -51,3 +51,42 @@ Create deploys
 Delete deploys
 
 `make kube-del`
+
+# Install 
+
+This can be installed via a helm chart assuming you have `gojektech-incubator` repo. You can read about that here (https://github.com/gojektech/charts)
+
+`helm install gojektech-incubator/envoy-lb-operator --name=some-envoy-cp`\
+
+you can get the service details
+
+`kubectl describe svc/some-envoy-cp-envoy-lb-operator`
+
+This can then set the relevant values in `./examples/envoy.yaml`
+Node ID should be appropriately set to match the config on Envoy and Operator
+```
+node:
+  cluster: service_greeter
+  id: nodeID //This is Hardcoded at the moment. Cant be changed at the moment.
+```
+
+
+The Envoy should be pointed to the previously created service.
+```
+load_assignment:
+  cluster_name: "xds_cluster"
+  endpoints:
+  - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: some-cp-envoy-lb-operator
+              port_value: 80
+              protocol: "TCP"
+
+```
+Now Following will install Envoy pointing to the previously installed operator as Control plane.
+
+`helm install --name some-lb  stable/envoy --set-file envoy.yaml=./example/envoy.yaml`
+
+
