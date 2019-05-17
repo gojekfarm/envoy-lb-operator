@@ -87,6 +87,6 @@ load_assignment:
 ```
 Now Following will install Envoy pointing to the previously installed operator as Control plane.
 
-`helm install --name some-lb  stable/envoy --set-file envoy.yaml=./example/envoy.yaml`
+`helm install --name some-lb  stable/envoy -f values.yaml`
 
-
+Where `values.yaml` has the overridden  `files.envoy.yaml` value.
