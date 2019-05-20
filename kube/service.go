@@ -24,6 +24,8 @@ type Service struct {
 	Address string
 	Port    uint32
 	Type    Type
+	Path    string
+	Domain  string
 }
 
 func (s Service) clusterName() string {
@@ -38,14 +40,9 @@ func (s Service) Cluster() *v2.Cluster {
 	return cp.StrictDNSLRCluster(s.clusterName(), s.Address, s.Port, 1000)
 }
 
-//Target represents the vhost target
-func (s Service) Target(prefix string) cp.Target {
-	return cp.Target{Host: s.Address, Prefix: prefix, ClusterName: s.clusterName()}
-}
-
 //DefaultTarget represents the vhost target
 func (s Service) DefaultTarget() cp.Target {
-	return cp.Target{Host: s.Address, Prefix: "/", ClusterName: s.clusterName()}
+	return cp.Target{Host: s.Address, Prefix: s.Path, ClusterName: s.clusterName()}
 }
 
 func ServiceType(svc *corev1.Service) Type {
@@ -55,4 +52,20 @@ func ServiceType(svc *corev1.Service) Type {
 	}
 	return HTTP
 
+}
+
+func ServicePath(svc *corev1.Service) string {
+	servicePath := svc.GetAnnotations()["envoy-lb-operator.gojektech.k8s.io/service-path"]
+	if servicePath == "" {
+		return "/"
+	}
+	return servicePath
+}
+
+func ServiceDomain(svc *corev1.Service) string {
+	serviceDomain := svc.GetAnnotations()["envoy-lb-operator.gojektech.k8s.io/service-domain"]
+	if serviceDomain == "" {
+		return "*"
+	}
+	return serviceDomain
 }

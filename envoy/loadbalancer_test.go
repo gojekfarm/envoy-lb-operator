@@ -35,7 +35,7 @@ func TestAddedUpstream(t *testing.T) {
 	lb := envoy.NewLB("node1")
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
 	})
 	lb.Close()
@@ -50,11 +50,11 @@ func TestAddUpdatedUpstream(t *testing.T) {
 	lb := envoy.NewLB("node1")
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
 	})
 	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8001), Type: kube.GRPC},
+		Svc:       kube.Service{Address: "foo", Port: uint32(8001), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.UPDATED,
 	})
 	lb.Close()
@@ -71,11 +71,11 @@ func TestDeletedUpstream(t *testing.T) {
 	lb := envoy.NewLB("node1")
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
 	})
 	lb.Trigger(envoy.LBEvent{
-		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.DELETED,
 	})
 	lb.Close()
@@ -84,4 +84,44 @@ func TestDeletedUpstream(t *testing.T) {
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 0, len(sn.Clusters.Items))
+}
+
+func TestSingleVhostDifferentPaths(t *testing.T) {
+	lb := envoy.NewLB("node1")
+	lb.Snapshot()
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
+		EventType: envoy.ADDED,
+	})
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "bar", Port: uint32(8000), Type: kube.GRPC, Path: "/bar", Domain: "*"},
+		EventType: envoy.ADDED,
+	})
+	lb.Close()
+	lb.HandleEvents()
+	lb.Snapshot()
+	sn, _ := lb.Config.GetSnapshot("node1")
+	assert.Equal(t, 1, len(sn.Listeners.Items))
+	//No Easy way to assert
+	//cfg, _ := json.Marshal(sn.Listeners.Items["assert.Equal(t, "", string(cfg))
+}
+
+func TestMultipleVhostsDifferentPaths(t *testing.T) {
+	lb := envoy.NewLB("node1")
+	lb.Snapshot()
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/", Domain: "foo.abc.com"},
+		EventType: envoy.ADDED,
+	})
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "bar", Port: uint32(8000), Type: kube.GRPC, Path: "/", Domain: "bar.abc.com"},
+		EventType: envoy.ADDED,
+	})
+	lb.Close()
+	lb.HandleEvents()
+	lb.Snapshot()
+	sn, _ := lb.Config.GetSnapshot("node1")
+	assert.Equal(t, 1, len(sn.Listeners.Items))
+	//No Easy way to assert
+	//cfg, _ := json.Marshal(sn.Listeners.Items["assert.Equal(t, "", string(cfg))
 }

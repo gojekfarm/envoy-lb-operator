@@ -46,7 +46,7 @@ func (lb *LoadBalancer) Trigger(evt LBEvent) {
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
 	if svc.Spec.ClusterIP == v1.ClusterIPNone {
-		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc)}})
+		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}})
 	}
 }
 
@@ -68,21 +68,25 @@ func (lb *LoadBalancer) HandleEvents() {
 func (lb *LoadBalancer) Snapshot() {
 	atomic.AddInt32(&lb.ConfigVersion, 1)
 	var clusters []cache.Resource
-	var targets []cp.Target
-	// svc := kube.Service{Address: "svc", Port: uint32(443), Type: kube.GRPC}
+
+	targetsByDomain := make(map[string][]cp.Target)
 	if len(lb.upstreams) > 0 {
 		for _, svc := range lb.upstreams {
-			clusters = append(clusters, svc.Cluster())
-			targets = append(targets, svc.DefaultTarget())
-		}
-	} // else {
-	// 	svc := kube.Service{Address: "www.google.com", Port: uint32(443), Type: kube.HTTP}
-	// 	clusters = append(clusters, svc.Cluster())
-	// 	targets = append(targets, svc.DefaultTarget())
-	// }
 
-	vh := cp.VHost("local_service", []string{"*"}, targets)
-	cm := cp.ConnectionManager("local_route", []route.VirtualHost{vh})
+			clusters = append(clusters, svc.Cluster())
+			if targetsByDomain[svc.Domain] == nil {
+				targetsByDomain[svc.Domain] = []cp.Target{svc.DefaultTarget()}
+			} else {
+				targetsByDomain[svc.Domain] = append(targetsByDomain[svc.Domain], svc.DefaultTarget())
+			}
+		}
+	}
+	vhosts := []route.VirtualHost{}
+	for domain, targets := range targetsByDomain {
+		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets))
+	}
+
+	cm := cp.ConnectionManager("local_route", vhosts)
 	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 8080, cm)
 
 	if err != nil {
