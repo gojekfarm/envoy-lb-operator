@@ -148,6 +148,7 @@ files:
         ads: {}
       ads_config:
         api_type: GRPC
+        refresh_delay: 5s
         grpc_services:
           envoy_grpc:
             cluster_name: ads_cluster 

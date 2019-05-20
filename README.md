@@ -90,3 +90,9 @@ Now Following will install Envoy pointing to the previously installed operator a
 `helm install --name some-lb  stable/envoy -f values.yaml`
 
 Where `values.yaml` has the overridden  `files.envoy.yaml` value.
+
+
+# WIP Issues
+
+1. Svc deletion wont work since the service can no longer be retrieved via api. Need a better way to remove from snapshot.
+2. Takes time for envoy to reflect changes.
