@@ -87,7 +87,7 @@ func (lb *LoadBalancer) Snapshot() {
 	}
 
 	cm := cp.ConnectionManager("local_route", vhosts)
-	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 8080, cm)
+	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 80, cm)
 
 	if err != nil {
 		panic(err)

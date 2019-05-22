@@ -2,45 +2,45 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grpc-greeter
+  name: greeterrr
   labels:
-    app: grpc-greeter
+    app: greeterrr
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: grpc-greeter
+      app: greeterrr
   template:
     metadata:
       labels:
-        app: grpc-greeter
+        app: greeterrr
     spec:
       containers:
-      - name: grpc-greeter
+      - name: greeterrr
         image: gojektech/grpc-greeter:latest
         args:
-          - ./grpc-greeter
+          - ./greeterrr
           - server
         env:
         - name: NODE_NAME
-          value: grpc-greeter
+          value: greeterrr
         ports:
         - containerPort: 8443
 ---
 kind: Service
 apiVersion: v1
 metadata:
-  name: grpc-greeter
+  name: greeterrr
   labels:
     heritage: envoy-lb
   annotations:
-    envoy-lb-operator.gojektech.k8s.io/service-domain: greet.abc.com
+    envoy-lb-operator.gojektech.k8s.io/service-domain: something.abc.com:8080
     envoy-lb-operator.gojektech.k8s.io/service-type: grpc
 spec:
   type: ClusterIP
   clusterIP: None
   selector:
-    app: grpc-greeter
+    app: greeterrr
   ports:
   - protocol: TCP
     port: 8443

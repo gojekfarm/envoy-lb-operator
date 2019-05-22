@@ -42,7 +42,7 @@ service:
     # service.beta.kubernetes.io/aws-load-balancer-internal: "true"
   ports:
     n0:
-      port: 8080
+      port: 80
       targetPort: n0
       protocol: TCP
 
@@ -51,7 +51,7 @@ ports:
     containerPort: 9000
     protocol: TCP
   n0:
-    containerPort: 8080
+    containerPort: 80
     protocol: TCP
 
 resources: {}
@@ -167,7 +167,7 @@ files:
             - endpoint:
                 address:
                   socket_address:
-                    address: envoy-lb-operator
+                    address: greeter-lb-op-envoy-lb-operator
                     port_value: 18000
 
 ## Uncomment this section to use helm values to dynamically generate enovy.yaml
