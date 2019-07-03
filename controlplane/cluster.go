@@ -3,13 +3,14 @@ package controlplane
 import (
 	"time"
 
-	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
 )
 
 //StrictDNSLRCluster creates a strict dns cluster with lb policy as least request.
-func StrictDNSLRCluster(name, svcAddress string, port uint32, timeoutms int) *v2.Cluster {
+func StrictDNSLRCluster(name, svcAddress string, port uint32, timeoutms int, circuitBreaker *cluster.CircuitBreakers, outlierDetection *cluster.OutlierDetection) *v2.Cluster {
 	endpointAddress := TCPAddress(svcAddress, port)
 	return &v2.Cluster{
 		Name:                 name,
@@ -29,12 +30,14 @@ func StrictDNSLRCluster(name, svcAddress string, port uint32, timeoutms int) *v2
 				}},
 			}},
 		},
+		CircuitBreakers:  circuitBreaker,
+		OutlierDetection: outlierDetection,
 	}
 }
 
 //StrictDNSLRHttp2Cluster creates an http2 strict dns cluster with lb policy as least request.
-func StrictDNSLRHttp2Cluster(name, svcAddress string, port uint32, timeoutms int) *v2.Cluster {
-	c := StrictDNSLRCluster(name, svcAddress, port, timeoutms)
+func StrictDNSLRHttp2Cluster(name, svcAddress string, port uint32, timeoutms int, circuitBreaker *cluster.CircuitBreakers, outlierDetection *cluster.OutlierDetection) *v2.Cluster {
+	c := StrictDNSLRCluster(name, svcAddress, port, timeoutms, circuitBreaker, outlierDetection)
 	c.Http2ProtocolOptions = &core.Http2ProtocolOptions{}
 	return c
 }
