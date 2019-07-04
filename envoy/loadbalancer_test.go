@@ -64,7 +64,7 @@ func TestAddUpdatedUpstream(t *testing.T) {
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 1, len(sn.Clusters.Items))
 	cfg, _ := json.Marshal(sn.Clusters.Items["foo_cluster"])
-	assert.Equal(t, `{"name":"foo_cluster","ClusterDiscoveryType":{"Type":1},"connect_timeout":1000000000,"lb_policy":1,"load_assignment":{"cluster_name":"foo_cluster","endpoints":[{"lb_endpoints":[{"HostIdentifier":{"Endpoint":{"address":{"Address":{"SocketAddress":{"address":"foo","PortSpecifier":{"PortValue":8001}}}}}}}]}]},"http2_protocol_options":{},"dns_lookup_family":1,"LbConfig":null}`, string(cfg))
+	assert.Equal(t, `{"name":"foo_cluster","ClusterDiscoveryType":{"Type":1},"connect_timeout":1000000000,"lb_policy":1,"load_assignment":{"cluster_name":"foo_cluster","endpoints":[{"lb_endpoints":[{"HostIdentifier":{"Endpoint":{"address":{"Address":{"SocketAddress":{"address":"foo","PortSpecifier":{"PortValue":8001}}}}}}}]}]},"circuit_breakers":{"thresholds":[{"max_connections":{"value":1024},"max_pending_requests":{"value":50000},"max_requests":{"value":50000},"max_retries":{"value":50000}}]},"http2_protocol_options":{},"dns_lookup_family":1,"outlier_detection":{"consecutive_5xx":{"value":10000},"interval":{"seconds":10},"base_ejection_time":{"seconds":30},"max_ejection_percent":{"value":50},"enforcing_consecutive_5xx":{},"consecutive_gateway_failure":{"value":5},"enforcing_consecutive_gateway_failure":{"value":100}},"LbConfig":null}`, string(cfg))
 }
 
 func TestDeletedUpstream(t *testing.T) {

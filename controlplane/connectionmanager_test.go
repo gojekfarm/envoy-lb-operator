@@ -2,6 +2,7 @@ package controlplane_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
@@ -18,9 +19,13 @@ func TestConnectionManager(t *testing.T) {
 			Prefix:      "/foo",
 			ClusterName: "foo_cluster",
 		},
-	})}
+	},
+		cp.RetryPolicy("xxx", "retry_predicate", 10, 20),
+	)}
 
-	cm := cp.ConnectionManager("route1234", vhosts)
+	duration := 10 * time.Millisecond
+	cm := cp.ConnectionManager("route1234", vhosts, &duration)
+	assert.Equal(t, &duration, cm.DrainTimeout)
 	assert.Equal(t, hcm.AUTO, cm.CodecType)
 	assert.Equal(t, "ingress_route1234", cm.StatPrefix)
 	assert.Equal(t, 1, len(cm.HttpFilters))

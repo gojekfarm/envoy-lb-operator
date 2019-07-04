@@ -2,15 +2,14 @@ package envoy
 
 import (
 	"fmt"
-	"sync/atomic"
-
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
-	kube "github.com/gojekfarm/envoy-lb-operator/kube"
-
+	"github.com/gojekfarm/envoy-lb-operator/kube"
+	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
+	"sync/atomic"
+	"time"
 )
 
 //LBEventType is the type of event impacting the LB
@@ -83,10 +82,11 @@ func (lb *LoadBalancer) Snapshot() {
 	}
 	vhosts := []route.VirtualHost{}
 	for domain, targets := range targetsByDomain {
-		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets))
+		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets, cp.RetryPolicy("connect-failure", "envoy.retry_host_predicates.previous_hosts", 3, 3)))
 	}
 
-	cm := cp.ConnectionManager("local_route", vhosts)
+	drainTimeoutInMs := 10 * time.Millisecond
+	cm := cp.ConnectionManager("local_route", vhosts, &drainTimeoutInMs)
 	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 80, cm)
 
 	if err != nil {

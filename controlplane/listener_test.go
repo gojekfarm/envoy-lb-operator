@@ -2,6 +2,7 @@ package controlplane_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
@@ -20,9 +21,12 @@ func TestListener(t *testing.T) {
 			Prefix:      "/foo",
 			ClusterName: "foo_cluster",
 		},
-	})}
+	},
+		cp.RetryPolicy("xxx", "retry_predicate", 10, 20),
+	)}
 
-	cm := cp.ConnectionManager("route1234", vhosts)
+	drainTimeout := 10 * time.Millisecond
+	cm := cp.ConnectionManager("route1234", vhosts, &drainTimeout)
 
 	l, err := cp.Listener("foo", "0.0.0.0", uint32(9000), cm)
 	assert.NoError(t, err)

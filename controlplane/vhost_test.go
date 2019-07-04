@@ -20,7 +20,9 @@ func TestVHost(t *testing.T) {
 			Prefix:      "/bar",
 			ClusterName: "bar_cluster",
 		},
-	})
+	},
+		cp.RetryPolicy("xxx", "retry_predicate", 10, 20),
+	)
 
 	assert.Equal(t, "foo", vhost.Name)
 	assert.Equal(t, 1, len(vhost.Domains))
@@ -34,4 +36,8 @@ func TestVHost(t *testing.T) {
 	assert.Equal(t, "bar", vhost.Routes[1].Action.(*route.Route_Route).Route.HostRewriteSpecifier.(*route.RouteAction_HostRewrite).HostRewrite)
 	assert.Equal(t, "bar_cluster", vhost.Routes[1].Action.(*route.Route_Route).Route.ClusterSpecifier.(*route.RouteAction_Cluster).Cluster)
 
+	assert.Equal(t, "xxx", vhost.RetryPolicy.RetryOn)
+	assert.Equal(t, uint32(10), vhost.RetryPolicy.NumRetries.Value)
+	assert.Equal(t, "retry_predicate", vhost.RetryPolicy.RetryHostPredicate[0].Name)
+	assert.Equal(t, int64(20), vhost.RetryPolicy.HostSelectionRetryMaxAttempts)
 }

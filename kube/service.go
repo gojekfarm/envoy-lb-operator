@@ -3,7 +3,7 @@ package kube
 import (
 	"fmt"
 
-	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
 
 	corev1 "k8s.io/api/core/v1"
@@ -34,10 +34,12 @@ func (s Service) clusterName() string {
 
 //Cluster returns envoy control plane config for a headless strict dns lookup
 func (s Service) Cluster() *v2.Cluster {
+	circuitBreaker := cp.CircuitBreaker(1024, 50000, 50000, 50000)
+	outlierDetection := cp.OutlierDetection(30, 10, 10000, 5, 0, 100, 50)
 	if s.Type == GRPC {
-		return cp.StrictDNSLRHttp2Cluster(s.clusterName(), s.Address, s.Port, 1000)
+		return cp.StrictDNSLRHttp2Cluster(s.clusterName(), s.Address, s.Port, 1000, circuitBreaker, outlierDetection)
 	}
-	return cp.StrictDNSLRCluster(s.clusterName(), s.Address, s.Port, 1000)
+	return cp.StrictDNSLRCluster(s.clusterName(), s.Address, s.Port, 1000, circuitBreaker, outlierDetection)
 }
 
 //DefaultTarget represents the vhost target
