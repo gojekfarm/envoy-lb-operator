@@ -1,6 +1,7 @@
 package kube_test
 
 import (
+	"github.com/gojekfarm/envoy-lb-operator/config"
 	"testing"
 
 	"github.com/gojekfarm/envoy-lb-operator/kube"
@@ -10,15 +11,16 @@ import (
 )
 
 func TestServiceClusterName(t *testing.T) {
-	grpccl := kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/"}.Cluster()
+	envoyConfig, _ := config.LoadEnvoyConfig("application", "../")
+	grpccl := kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/"}.Cluster(envoyConfig.ConnectTimeoutMs, envoyConfig.CircuitBreaker, envoyConfig.OutlierDetection)
 	assert.Equal(t, "foo_cluster", grpccl.Name)
-	httpcl := kube.Service{Address: "bar", Port: uint32(8000), Type: kube.HTTP, Path: "/"}.Cluster()
+	httpcl := kube.Service{Address: "bar", Port: uint32(8000), Type: kube.HTTP, Path: "/"}.Cluster(envoyConfig.ConnectTimeoutMs, envoyConfig.CircuitBreaker, envoyConfig.OutlierDetection)
 	assert.Equal(t, "bar_cluster", httpcl.Name)
 }
 
 func TestGRPCIsHttp2Cluster(t *testing.T) {
-	assert.Nil(t, kube.Service{Address: "foo", Port: uint32(8000), Type: kube.HTTP, Path: "/"}.Cluster().Http2ProtocolOptions)
-	assert.NotNil(t, kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/"}.Cluster().Http2ProtocolOptions)
+	assert.Nil(t, kube.Service{Address: "foo", Port: uint32(8000), Type: kube.HTTP, Path: "/"}.Cluster(1000, config.CircuitBreakerConfig{}, config.OutlierDetectionConfig{}).Http2ProtocolOptions)
+	assert.NotNil(t, kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/"}.Cluster(1000, config.CircuitBreakerConfig{}, config.OutlierDetectionConfig{}).Http2ProtocolOptions)
 }
 
 func TestDefaultTarget(t *testing.T) {

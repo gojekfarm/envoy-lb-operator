@@ -2,6 +2,7 @@ package kube
 
 import (
 	"fmt"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
@@ -33,13 +34,13 @@ func (s Service) clusterName() string {
 }
 
 //Cluster returns envoy control plane config for a headless strict dns lookup
-func (s Service) Cluster() *v2.Cluster {
-	circuitBreaker := cp.CircuitBreaker(1024, 50000, 50000, 50000)
-	outlierDetection := cp.OutlierDetection(30, 10, 10000, 5, 0, 100, 50)
+func (s Service) Cluster(connectTimeoutMs int, cb config.CircuitBreakerConfig, od config.OutlierDetectionConfig) *v2.Cluster {
+	circuitBreaker := cp.CircuitBreaker(cb.MaxConnections, cb.MaxRequests, cb.MaxPendingRequests, cb.MaxRetries)
+	outlierDetection := cp.OutlierDetection(od.BaseEjectionTimeInSeconds, od.EjectionSweepIntervalInSeconds, od.Consecutive5xx, od.ConsecutiveGatewayFailure, od.EnforcingConsecutive5xx, od.EnforcingConsecutiveGatewayFailure, od.MaxEjectionPercent)
 	if s.Type == GRPC {
-		return cp.StrictDNSLRHttp2Cluster(s.clusterName(), s.Address, s.Port, 1000, circuitBreaker, outlierDetection)
+		return cp.StrictDNSLRHttp2Cluster(s.clusterName(), s.Address, s.Port, connectTimeoutMs, circuitBreaker, outlierDetection)
 	}
-	return cp.StrictDNSLRCluster(s.clusterName(), s.Address, s.Port, 1000, circuitBreaker, outlierDetection)
+	return cp.StrictDNSLRCluster(s.clusterName(), s.Address, s.Port, connectTimeoutMs, circuitBreaker, outlierDetection)
 }
 
 //DefaultTarget represents the vhost target

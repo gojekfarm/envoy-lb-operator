@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,12 +36,12 @@ var serveCmd = &cobra.Command{
 
 var debug bool
 var masterurl string
-var config string
+var kubeConfig string
 
 func init() {
 	cliCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "use debug level logs")
 	serveCmd.Flags().StringVarP(&masterurl, "master", "m", "", "Master URL for Kube API server")
-	serveCmd.Flags().StringVarP(&config, "kubeconfig", "c", "", "Help message for toggle")
+	serveCmd.Flags().StringVarP(&kubeConfig, "kubeconfig", "c", "", "Help message for toggle")
 
 	cobra.OnInitialize(initConfig)
 	cliCmd.AddCommand(serveCmd)
@@ -61,20 +62,23 @@ func cancelOnInterrupt(cancelFn func()) {
 
 func serve(cmd *cobra.Command, args []string) {
 	log.Printf("Starting control plane")
-	cfg, err := clientcmd.BuildConfigFromFlags(masterurl, config)
+	cfg, err := clientcmd.BuildConfigFromFlags(masterurl, kubeConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	envoyConfig, err := config.LoadDefaultEnvoyConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 	kubeClient, err := kubernetes.NewForConfig(cfg)
-	lb := envoy.NewLB("nodeID")
+	lb := envoy.NewLB("nodeID", envoyConfig)
 	if err != nil {
 		//test data for now.
 		lb.Trigger(envoy.LBEvent{
 			Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
 			EventType: envoy.ADDED,
 		})
-
 	} else {
 		go cancelOnInterrupt(server.StartKubehandler(kubeClient, lb.SvcTrigger))
 	}
@@ -92,7 +96,6 @@ func serve(cmd *cobra.Command, args []string) {
 		time.Sleep(10 * time.Second)
 		reader := bufio.NewReader(os.Stdin)
 		_, _ = reader.ReadString('\n')
-
 	}
 }
 

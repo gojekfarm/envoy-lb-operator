@@ -2,6 +2,7 @@ package envoy_test
 
 import (
 	"encoding/json"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 	"testing"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
@@ -10,12 +11,12 @@ import (
 )
 
 func TestSnapshotVersion(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 }
 
 func TestSnapshotVersionIncrementsOnStore(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 	lb.Snapshot()
 	assert.Equal(t, int32(1), lb.ConfigVersion)
@@ -24,7 +25,7 @@ func TestSnapshotVersionIncrementsOnStore(t *testing.T) {
 }
 
 func TestInitialState(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	lb.Snapshot()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
@@ -32,7 +33,7 @@ func TestInitialState(t *testing.T) {
 }
 
 func TestAddedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -47,7 +48,8 @@ func TestAddedUpstream(t *testing.T) {
 }
 
 func TestAddUpdatedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	envoyConfig, _ := config.LoadEnvoyConfig("application", "../")
+	lb := envoy.NewLB("node1", envoyConfig)
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -68,7 +70,7 @@ func TestAddUpdatedUpstream(t *testing.T) {
 }
 
 func TestDeletedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -87,7 +89,7 @@ func TestDeletedUpstream(t *testing.T) {
 }
 
 func TestSingleVhostDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -107,7 +109,7 @@ func TestSingleVhostDifferentPaths(t *testing.T) {
 }
 
 func TestMultipleVhostsDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1")
+	lb := envoy.NewLB("node1", config.EnvoyConfig{})
 	lb.Snapshot()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/", Domain: "foo.abc.com"},

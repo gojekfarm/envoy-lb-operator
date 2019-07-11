@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
 	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"k8s.io/api/core/v1"
@@ -37,6 +38,7 @@ type LoadBalancer struct {
 	nodeID        string
 	Config        cache.SnapshotCache
 	ConfigVersion int32
+	EnvoyConfig   config.EnvoyConfig
 }
 
 func (lb *LoadBalancer) Trigger(evt LBEvent) {
@@ -72,7 +74,7 @@ func (lb *LoadBalancer) Snapshot() {
 	if len(lb.upstreams) > 0 {
 		for _, svc := range lb.upstreams {
 
-			clusters = append(clusters, svc.Cluster())
+			clusters = append(clusters, svc.Cluster(lb.EnvoyConfig.ConnectTimeoutMs, lb.EnvoyConfig.CircuitBreaker, lb.EnvoyConfig.OutlierDetection))
 			if targetsByDomain[svc.Domain] == nil {
 				targetsByDomain[svc.Domain] = []cp.Target{svc.DefaultTarget()}
 			} else {
@@ -82,7 +84,8 @@ func (lb *LoadBalancer) Snapshot() {
 	}
 	vhosts := []route.VirtualHost{}
 	for domain, targets := range targetsByDomain {
-		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets, cp.RetryPolicy("connect-failure", "envoy.retry_host_predicates.previous_hosts", 3, 3)))
+		retryConfig := lb.EnvoyConfig.RetryConfig
+		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets, cp.RetryPolicy(retryConfig.RetryOn, retryConfig.RetryPredicate, retryConfig.NumRetries, retryConfig.HostSelectionMaxRetryAttempts)))
 	}
 
 	drainTimeoutInMs := 10 * time.Millisecond
@@ -96,6 +99,6 @@ func (lb *LoadBalancer) Snapshot() {
 	lb.Config.SetSnapshot(lb.nodeID, snapshot)
 }
 
-func NewLB(nodeID string) *LoadBalancer {
-	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: cache.NewSnapshotCache(true, Hasher{}, logger{})}
+func NewLB(nodeID string, envoyConfig config.EnvoyConfig) *LoadBalancer {
+	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: cache.NewSnapshotCache(true, Hasher{}, logger{}), EnvoyConfig: envoyConfig}
 }
