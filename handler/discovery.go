@@ -5,6 +5,7 @@ import (
 	"github.com/gojektech/kubehandler"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	corev1types "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -34,9 +35,12 @@ func (d *Discovery) UpdateFunc(namespace, name string) error {
 }
 
 func (d *Discovery) DeleteFunc(namespace, name string) error {
-	svc, err := d.CoreClient.Services(namespace).Get(name, v1.GetOptions{})
-	if err != nil {
-		return err
+	//After deletion from kubernetes we won't be getting the service object.
+	//We pass the dummy service with the name so that the deletion action can be triggered.
+	svc := &corev1.Service{
+		ObjectMeta: v1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: corev1.ServiceSpec{ClusterIP: corev1.ClusterIPNone,
+			Ports: []corev1.ServicePort{{TargetPort: intstr.IntOrString{IntVal: 1234},}}},
 	}
 	d.SVCTrigger(envoy.DELETED, svc)
 	return nil
