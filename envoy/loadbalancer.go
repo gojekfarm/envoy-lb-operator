@@ -9,6 +9,7 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +34,7 @@ type LBEvent struct {
 
 //LoadBalancer represents the current state of upstreams for a load balancer
 type LoadBalancer struct {
+	sync.RWMutex
 	events        chan LBEvent
 	upstreams     map[string]kube.Service
 	nodeID        string
@@ -57,16 +59,20 @@ func (lb *LoadBalancer) Close() {
 
 func (lb *LoadBalancer) HandleEvents() {
 	for evt := range lb.events {
+		lb.Lock()
 		switch evt.EventType {
 		case DELETED:
 			delete(lb.upstreams, evt.Svc.Address)
 		default:
 			lb.upstreams[evt.Svc.Address] = evt.Svc
 		}
+		lb.Unlock()
 	}
 }
 
 func (lb *LoadBalancer) Snapshot() {
+	lb.RLock();
+	defer lb.RUnlock()
 	atomic.AddInt32(&lb.ConfigVersion, 1)
 	var clusters []cache.Resource
 
