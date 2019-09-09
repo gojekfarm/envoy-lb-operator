@@ -73,6 +73,7 @@ func serve(cmd *cobra.Command, args []string) {
 	}
 	kubeClient, err := kubernetes.NewForConfig(cfg)
 	lb := envoy.NewLB("nodeID", envoyConfig)
+	go lb.HandleEvents()
 	if err != nil {
 		//test data for now.
 		lb.Trigger(envoy.LBEvent{
@@ -89,7 +90,6 @@ func serve(cmd *cobra.Command, args []string) {
 	go xdsServer.Run(ctx)
 	xdsServer.WaitForRequests()
 	go xdsServer.Report()
-	go lb.HandleEvents()
 
 	for {
 		lb.Snapshot()
