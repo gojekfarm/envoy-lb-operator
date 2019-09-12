@@ -7,7 +7,9 @@ import (
 func VHost(name string, domains []string, targets []Target, retryPolicy *route.RetryPolicy) route.VirtualHost {
 	var routes []route.Route
 	for _, t := range targets {
-		routes = append(routes, t.Route())
+		for _, r := range t.Route() {
+			routes = append(routes, r)
+		}
 	}
 
 	var retryPredicateArray []*route.RetryPolicy_RetryHostPredicate

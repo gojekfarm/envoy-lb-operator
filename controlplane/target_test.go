@@ -11,7 +11,7 @@ import (
 func TestTargetRoute(t *testing.T) {
 	target := &cp.Target{Host: "test", Prefix: "/", ClusterName: "cluster_a"}
 	r := target.Route()
-	assert.Equal(t, "/", r.Match.PathSpecifier.(*route.RouteMatch_Prefix).Prefix)
-	assert.Equal(t, "test", r.Action.(*route.Route_Route).Route.HostRewriteSpecifier.(*route.RouteAction_HostRewrite).HostRewrite)
-	assert.Equal(t, "cluster_a", r.Action.(*route.Route_Route).Route.ClusterSpecifier.(*route.RouteAction_Cluster).Cluster)
+	assert.Equal(t, "/", r[0].Match.PathSpecifier.(*route.RouteMatch_Prefix).Prefix)
+	assert.Equal(t, "test", r[0].Action.(*route.Route_Route).Route.HostRewriteSpecifier.(*route.RouteAction_HostRewrite).HostRewrite)
+	assert.Equal(t, "cluster_a", r[0].Action.(*route.Route_Route).Route.ClusterSpecifier.(*route.RouteAction_Cluster).Cluster)
 }
