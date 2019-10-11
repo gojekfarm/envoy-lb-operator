@@ -2,3 +2,4 @@ vendor
 envoy-lb-operator
 out/
 .idea/
+*.swp

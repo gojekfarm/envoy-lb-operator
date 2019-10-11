@@ -1,0 +1,4 @@
+operator:
+  envoy_discovery_mapping:
+    stream1: service_label1
+    stream2: service_label2
