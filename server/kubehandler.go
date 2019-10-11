@@ -7,20 +7,21 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
 	"github.com/gojekfarm/envoy-lb-operator/handler"
 	"github.com/gojektech/kubehandler"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
 
-func filterServices(opt *metav1.ListOptions) {
-	opt.LabelSelector = "heritage=envoy-lb"
+func filterServices(endpointLabel string) func(*metav1.ListOptions) {
+	return func(opt *metav1.ListOptions) {
+		opt.LabelSelector = endpointLabel
+	}
 }
 
-func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *corev1.Service)) context.CancelFunc {
+func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel, namespace string) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, v1.NamespaceAll, filterServices)
+	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, namespace, filterServices(endpointLabel))
 	informer := kubeInformerFactory.Core().V1().Services().Informer()
 	discoveryHandler := &handler.Discovery{
 		CoreClient: client.CoreV1(),
@@ -35,7 +36,8 @@ func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType e
 	go kubeInformerFactory.Start(ctx.Done())
 	go loop.Run(20, ctx.Done())
 
-	serviceList, _ := client.CoreV1().Services(v1.NamespaceAll).List(metav1.ListOptions{LabelSelector: "heritage=envoy-lb"})
+	// Initialise for the beginning
+	serviceList, _ := client.CoreV1().Services(namespace).List(metav1.ListOptions{LabelSelector: endpointLabel})
 	for _, svc := range serviceList.Items {
 		triggerfunc(envoy.ADDED, &svc)
 	}

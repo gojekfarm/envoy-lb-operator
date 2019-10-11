@@ -67,8 +67,22 @@ Node ID should be appropriately set to match the config on Envoy and Operator
 ```
 node:
   cluster: service_greeter
-  id: nodeID //This is Hardcoded at the moment. Cant be changed at the moment.
+  id: id1 
 ```
+
+This can support multiple envoy clusters. It can be configured as follows:
+
+```
+envoy_discovery_mapping:
+  - envoy_id: "id1"
+    upstream_endpoint_label: "label1=val1"
+    namespace: "namespace1"
+  - envoy_id: "id2"
+    upstream_endpoint_label: "label2=val2"
+    namespace: "namespace2"
+```
+
+All the upstreams having a given label (eg: label1=val1) will be registered to the corresponding envoy (eg: id1) in the specified namespace (eg: namespace1).
 
 
 The Envoy should be pointed to the previously created service.
@@ -94,5 +108,4 @@ Where `values.yaml` has the overridden  `files.envoy.yaml` value.
 
 # WIP Issues
 
-1. Svc deletion wont work since the service can no longer be retrieved via api. Need a better way to remove from snapshot.
-2. Takes time for envoy to reflect changes.
+1. Takes time for envoy to reflect changes.

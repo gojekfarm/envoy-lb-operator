@@ -2,8 +2,10 @@ package envoy_test
 
 import (
 	"encoding/json"
-	"github.com/gojekfarm/envoy-lb-operator/config"
 	"testing"
+
+	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
 	kube "github.com/gojekfarm/envoy-lb-operator/kube"
@@ -11,46 +13,47 @@ import (
 )
 
 func TestSnapshotVersion(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 }
 
 func TestSnapshotVersionIncrementsOnStore(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
 	assert.Equal(t, int32(0), lb.ConfigVersion)
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	assert.Equal(t, int32(1), lb.ConfigVersion)
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	assert.Equal(t, int32(2), lb.ConfigVersion)
 }
 
 func TestInitialState(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
-	lb.Snapshot()
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 0, len(sn.Clusters.Items))
 }
 
 func TestAddedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
-	lb.Snapshot()
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
 	})
 	lb.Close()
 	lb.HandleEvents()
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 1, len(sn.Clusters.Items))
 }
 
 func TestAddUpdatedUpstream(t *testing.T) {
-	envoyConfig, _ := config.LoadEnvoyConfig("application", "../")
-	lb := envoy.NewLB("node1", envoyConfig)
-	lb.Snapshot()
+	config.MustLoad("application", "../")
+	envoyConfig := config.GetEnvoyConfig()
+	lb := envoy.NewLB("node1", envoyConfig, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
@@ -61,7 +64,7 @@ func TestAddUpdatedUpstream(t *testing.T) {
 	})
 	lb.Close()
 	lb.HandleEvents()
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 1, len(sn.Clusters.Items))
@@ -70,8 +73,8 @@ func TestAddUpdatedUpstream(t *testing.T) {
 }
 
 func TestDeletedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
-	lb.Snapshot()
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
@@ -82,15 +85,15 @@ func TestDeletedUpstream(t *testing.T) {
 	})
 	lb.Close()
 	lb.HandleEvents()
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	assert.Equal(t, 0, len(sn.Clusters.Items))
 }
 
 func TestSingleVhostDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
-	lb.Snapshot()
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
 		EventType: envoy.ADDED,
@@ -101,7 +104,7 @@ func TestSingleVhostDifferentPaths(t *testing.T) {
 	})
 	lb.Close()
 	lb.HandleEvents()
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	//No Easy way to assert
@@ -109,8 +112,8 @@ func TestSingleVhostDifferentPaths(t *testing.T) {
 }
 
 func TestMultipleVhostsDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{})
-	lb.Snapshot()
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/", Domain: "foo.abc.com"},
 		EventType: envoy.ADDED,
@@ -121,7 +124,7 @@ func TestMultipleVhostsDifferentPaths(t *testing.T) {
 	})
 	lb.Close()
 	lb.HandleEvents()
-	lb.Snapshot()
+	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	//No Easy way to assert

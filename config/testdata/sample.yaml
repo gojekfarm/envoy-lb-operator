@@ -1,0 +1,8 @@
+operator:
+  envoy_discovery_mapping:
+  - envoy_id: stream_1
+    upstream_endpoint_label: endpoint_1
+    namespace: namespace_1
+  - envoy_id: stream_2
+    upstream_endpoint_label: endpoint_2
+    namespace: namespace_2

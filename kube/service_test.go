@@ -1,8 +1,9 @@
 package kube_test
 
 import (
-	"github.com/gojekfarm/envoy-lb-operator/config"
 	"testing"
+
+	"github.com/gojekfarm/envoy-lb-operator/config"
 
 	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +12,8 @@ import (
 )
 
 func TestServiceClusterName(t *testing.T) {
-	envoyConfig, _ := config.LoadEnvoyConfig("application", "../")
+	config.MustLoad("application", "../")
+	envoyConfig := config.GetEnvoyConfig()
 	grpccl := kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/"}.Cluster(envoyConfig.ConnectTimeoutMs, envoyConfig.CircuitBreaker, envoyConfig.OutlierDetection)
 	assert.Equal(t, "foo_cluster", grpccl.Name)
 	httpcl := kube.Service{Address: "bar", Port: uint32(8000), Type: kube.HTTP, Path: "/"}.Cluster(envoyConfig.ConnectTimeoutMs, envoyConfig.CircuitBreaker, envoyConfig.OutlierDetection)
