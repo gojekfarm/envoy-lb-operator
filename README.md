@@ -96,3 +96,13 @@ Where `values.yaml` has the overridden  `files.envoy.yaml` value.
 
 1. Svc deletion wont work since the service can no longer be retrieved via api. Need a better way to remove from snapshot.
 2. Takes time for envoy to reflect changes.
+
+
+# TODO
+* read map[cluster]kafkacarlable from config
+* add test for serve
+* add test multiple loadbalancer updating snapshot
+* synchronize goroutines on interrupt
+* Stop operator if there's error with kube handler registration
+* Remove svc from filter chains on svc deletion
+* make fmt as loggers with loglevel

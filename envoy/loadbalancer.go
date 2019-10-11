@@ -9,6 +9,7 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -44,34 +45,41 @@ type LoadBalancer struct {
 }
 
 func (lb *LoadBalancer) Trigger(evt LBEvent) {
+	fmt.Printf("Before Adding event to channel - %v for node - %s\n", evt, lb.nodeID)
 	lb.events <- evt
+	fmt.Printf("After Adding event to channel - %v for node - %s\n", evt, lb.nodeID)
 }
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
+	log.Printf("!!! Received event: %s eventtype: %+v for node: %s", svc, eventType, lb.nodeID)
 	if svc.Spec.ClusterIP == v1.ClusterIPNone {
 		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}})
 	}
 }
 
 func (lb *LoadBalancer) Close() {
+	fmt.Printf("!!!!!!! Closing lb")
 	close(lb.events)
 }
 
 func (lb *LoadBalancer) HandleEvents() {
+	fmt.Printf("loadbalancer %s handling events", lb.nodeID)
 	for evt := range lb.events {
-		lb.Lock()
 		switch evt.EventType {
 		case DELETED:
 			delete(lb.upstreams, evt.Svc.Address)
+			fmt.Printf("deleting upstream: %v id: %s", evt.Svc, lb.nodeID)
 		default:
 			lb.upstreams[evt.Svc.Address] = evt.Svc
+			fmt.Printf("adding upstream: %v id: %s\n", evt.Svc, lb.nodeID)
 		}
-		lb.Unlock()
 	}
+	fmt.Printf("!!!! Completed handling events: %s", lb.nodeID)
 }
 
-func (lb *LoadBalancer) Snapshot() {
-	lb.RLock();
+func (lb *LoadBalancer) SnapshotRunner() {
+	fmt.Printf("Running snapshot runner.... %s\n", lb.nodeID)
+	lb.RLock()
 	defer lb.RUnlock()
 	atomic.AddInt32(&lb.ConfigVersion, 1)
 	var clusters []cache.Resource
@@ -99,12 +107,16 @@ func (lb *LoadBalancer) Snapshot() {
 	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 80, cm)
 
 	if err != nil {
+		fmt.Printf("Error %v", err)
 		panic(err)
 	}
 	snapshot := cache.NewSnapshot(fmt.Sprint(lb.ConfigVersion), nil, clusters, nil, []cache.Resource{listener})
-	lb.Config.SetSnapshot(lb.nodeID, snapshot)
+	err = lb.Config.SetSnapshot(lb.nodeID, snapshot)
+	if err != nil {
+		fmt.Printf("snapshot error: %s", err.Error())
+	}
 }
 
-func NewLB(nodeID string, envoyConfig config.EnvoyConfig) *LoadBalancer {
-	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: cache.NewSnapshotCache(true, Hasher{}, logger{}), EnvoyConfig: envoyConfig}
+func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.SnapshotCache) *LoadBalancer {
+	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig}
 }

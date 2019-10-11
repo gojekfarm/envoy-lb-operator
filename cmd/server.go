@@ -1,17 +1,16 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"github.com/gojekfarm/envoy-lb-operator/config"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	"github.com/gojekfarm/envoy-lb-operator/config"
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
-	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"github.com/gojekfarm/envoy-lb-operator/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -26,6 +25,7 @@ var cliCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Do Stuff Here
 	},
+	Version: "0.0.1",
 }
 
 var serveCmd = &cobra.Command{
@@ -61,42 +61,49 @@ func cancelOnInterrupt(cancelFn func()) {
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	log.Printf("Starting control plane")
+	log.Printf("Running application: %s\n", cmd.Version)
 	cfg, err := clientcmd.BuildConfigFromFlags(masterurl, kubeConfig)
+	log.Printf("got config: host: %s pat: %+v\n", cfg.Host, cfg.APIPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	envoyConfig, err := config.LoadDefaultEnvoyConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	lb := envoy.NewLB("nodeID", envoyConfig)
-	go lb.HandleEvents()
-	if err != nil {
-		//test data for now.
-		lb.Trigger(envoy.LBEvent{
-			Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC},
-			EventType: envoy.ADDED,
-		})
-	} else {
-		go cancelOnInterrupt(server.StartKubehandler(kubeClient, lb.SvcTrigger))
-	}
+	envoyConfig := config.GetEnvoyConfig()
+	snapshotCache := cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{})
+	startXdsServer(snapshotCache)
 
+	for key, value := range config.GetDiscoveryMapping() {
+		kubeClient, err := kubernetes.NewForConfig(cfg)
+		if err != nil {
+			log.Fatalf("error creating kube client: %v", err)
+		}
+		lb := envoy.NewLB(key, envoyConfig, snapshotCache)
+		go lb.HandleEvents()
+		cancelFn := server.StartKubehandler(kubeClient, lb.SvcTrigger, value)
+		go cancelOnInterrupt(cancelFn)
+
+		go func() {
+			for {
+				lb.SnapshotRunner()
+				time.Sleep(10 * time.Second)
+			}
+		}()
+
+		log.Printf("running for %s %v\n", key, value)
+	}
+	fmt.Println("waiting in main")
+	for {
+		time.Sleep(1000)
+	}
+}
+
+func startXdsServer(snapshotCache cache.SnapshotCache) {
 	ctx := context.Background()
 	// start the xDS server
-	xdsServer := server.New(lb.Config, 18000)
+	xdsServer := server.New(snapshotCache, 18000)
 	go xdsServer.Run(ctx)
 	xdsServer.WaitForRequests()
 	go xdsServer.Report()
-
-	for {
-		lb.Snapshot()
-		time.Sleep(10 * time.Second)
-		reader := bufio.NewReader(os.Stdin)
-		_, _ = reader.ReadString('\n')
-	}
 }
 
 //Execute called from main
