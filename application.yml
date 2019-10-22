@@ -21,6 +21,13 @@ envoy:
       num_retries: 3
       host_selection_max_retry_attempts: 3
 operator:
-  envoy_discovery_mappping:
-    stream1: service_label1
-    stream2: service_label2
+  refresh_interval_in_s: 10
+  envoy_discovery_mapping:
+    - envoy_id: "appstream"
+      upstream_endpoint_label: "heritage=envoy-lb"
+      namespace: "hermes"
+    - envoy_id: "mainstream"
+      upstream_endpoint_label: "cluster=mainstream"
+      namespace: "hermes"
+  log:
+    level: info

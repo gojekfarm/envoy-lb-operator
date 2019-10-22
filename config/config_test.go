@@ -49,9 +49,17 @@ func TestLoadEnvoyConfigSetsDefaultsIfNotConfigured(t *testing.T) {
 }
 
 func TestShouldLoadEnvoyUpstreamMapping(t *testing.T) {
-	expectedEnvoyConfig := map[string]string{
-		"stream1": "service_label1",
-		"stream2": "service_label2",
+	expectedEnvoyConfig := []config.DiscoveryMap{
+		{
+			EnvoyId:               "stream_1",
+			UpstreamEndpointLabel: "endpoint_1",
+			Namespace:             "namespace_1",
+		},
+		{
+			EnvoyId:               "stream_2",
+			UpstreamEndpointLabel: "endpoint_2",
+			Namespace:             "namespace_2",
+		},
 	}
 
 	config.MustLoad("sample", "./testdata")

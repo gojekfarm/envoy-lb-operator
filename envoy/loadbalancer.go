@@ -9,7 +9,7 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,42 +45,35 @@ type LoadBalancer struct {
 }
 
 func (lb *LoadBalancer) Trigger(evt LBEvent) {
-	fmt.Printf("Before Adding event to channel - %v for node - %s\n", evt, lb.nodeID)
 	lb.events <- evt
-	fmt.Printf("After Adding event to channel - %v for node - %s\n", evt, lb.nodeID)
 }
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
-	log.Printf("!!! Received event: %s eventtype: %+v for node: %s", svc, eventType, lb.nodeID)
+	log.Debugf("Received event: %s eventtype: %+v for node: %s", svc, eventType, lb.nodeID)
 	if svc.Spec.ClusterIP == v1.ClusterIPNone {
 		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}})
 	}
 }
 
 func (lb *LoadBalancer) Close() {
-	fmt.Printf("!!!!!!! Closing lb")
+	log.Debug("Closing lb operator")
 	close(lb.events)
 }
 
 func (lb *LoadBalancer) HandleEvents() {
-	fmt.Printf("loadbalancer %s handling events", lb.nodeID)
 	for evt := range lb.events {
 		switch evt.EventType {
 		case DELETED:
 			delete(lb.upstreams, evt.Svc.Address)
-			fmt.Printf("deleting upstream: %v id: %s", evt.Svc, lb.nodeID)
+			log.Debugf("Deleting upstream: %v id: %s", evt.Svc, lb.nodeID)
 		default:
 			lb.upstreams[evt.Svc.Address] = evt.Svc
-			fmt.Printf("adding upstream: %v id: %s\n", evt.Svc, lb.nodeID)
+			log.Debugf("Adding upstream: %v id: %s\n", evt.Svc, lb.nodeID)
 		}
 	}
-	fmt.Printf("!!!! Completed handling events: %s", lb.nodeID)
 }
 
 func (lb *LoadBalancer) SnapshotRunner() {
-	fmt.Printf("Running snapshot runner.... %s\n", lb.nodeID)
-	lb.RLock()
-	defer lb.RUnlock()
 	atomic.AddInt32(&lb.ConfigVersion, 1)
 	var clusters []cache.Resource
 
@@ -107,13 +100,13 @@ func (lb *LoadBalancer) SnapshotRunner() {
 	var listener, err = cp.Listener("listener_grpc", "0.0.0.0", 80, cm)
 
 	if err != nil {
-		fmt.Printf("Error %v", err)
+		log.Errorf("Error %v", err)
 		panic(err)
 	}
 	snapshot := cache.NewSnapshot(fmt.Sprint(lb.ConfigVersion), nil, clusters, nil, []cache.Resource{listener})
 	err = lb.Config.SetSnapshot(lb.nodeID, snapshot)
 	if err != nil {
-		fmt.Printf("snapshot error: %s", err.Error())
+		log.Errorf("snapshot error: %s", err.Error())
 	}
 }
 

@@ -99,10 +99,39 @@ Where `values.yaml` has the overridden  `files.envoy.yaml` value.
 
 
 # TODO
-* read map[cluster]kafkacarlable from config
+* read map[cluster]kafkacarlable from config - *DONE*
+* get refresh interval from config - *DONE*
+* make fmt as loggers with loglevel - *DONE*
 * add test for serve
 * add test multiple loadbalancer updating snapshot
 * synchronize goroutines on interrupt
 * Stop operator if there's error with kube handler registration
-* Remove svc from filter chains on svc deletion
-* make fmt as loggers with loglevel
+
+
+# To Note
+* viper is case insensitive, so nodeID=something as config wouldn't work, will redeploy envoy
+
+# Deployment
+## Appstream envoy Deployment
+* New envoy create with id: appstream
+  - ensure resource limitations
+  - more than one envoy
+  - static ip in svc.yaml
+  - no configs will be available for upstreams
+* old envoy stays with nodeID, (it gets events from existing operator)
+* redeploy lb operator with appstream:heritage=envoy-lb
+* new appstream kafkacar deletion/addition will go to appstream 
+* verify new appstream envoy & old envoy holds same config for cluster
+* update all appstream producers DNS list to point to new appstream
+* dont' kill old envoy as it's serving mainstream traffic
+* ttl for dns should be 30s
+   
+## Mainstream Envoy Deploy:
+* Deploy new envoy with mainstream as node id
+* update kafkacar deployments to have label cluster=mainstream
+* redeploy envoy lb-operator with both appstream:heritage=envoy-lb, mainstream:cluster=mainstream
+* verify new mainstream envoy holds all mainstream kafkacars
+* update all mainstream producers DNS to point to mainstream envoy
+* verify no conns/requests sent to old envoy
+
+## Kill old envoy

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
@@ -20,9 +19,9 @@ func filterServices(endpointLabel string) func(*metav1.ListOptions) {
 	}
 }
 
-func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel string) context.CancelFunc {
+func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel, namespace string) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, v1.NamespaceAll, filterServices(endpointLabel))
+	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, namespace, filterServices(endpointLabel))
 	informer := kubeInformerFactory.Core().V1().Services().Informer()
 	discoveryHandler := &handler.Discovery{
 		CoreClient: client.CoreV1(),
@@ -40,7 +39,6 @@ func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType e
 	// Initialise for the beginning
 	serviceList, _ := client.CoreV1().Services(v1.NamespaceAll).List(metav1.ListOptions{LabelSelector: endpointLabel})
 	for _, svc := range serviceList.Items {
-		log.Printf("loading service during boot :%v\n", &svc)
 		triggerfunc(envoy.ADDED, &svc)
 	}
 

@@ -34,24 +34,16 @@ var serveCmd = &cobra.Command{
 	Run:   serve,
 }
 
-var debug bool
 var masterurl string
 var kubeConfig string
 
 func init() {
-	cliCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "use debug level logs")
 	serveCmd.Flags().StringVarP(&masterurl, "master", "m", "", "Master URL for Kube API server")
 	serveCmd.Flags().StringVarP(&kubeConfig, "kubeconfig", "c", "", "Help message for toggle")
 
-	cobra.OnInitialize(initConfig)
 	cliCmd.AddCommand(serveCmd)
 }
 
-func initConfig() {
-	if debug {
-		log.SetLevel(log.DebugLevel)
-	}
-}
 
 func cancelOnInterrupt(cancelFn func()) {
 	sigCh := make(chan os.Signal)
@@ -71,27 +63,26 @@ func serve(cmd *cobra.Command, args []string) {
 	envoyConfig := config.GetEnvoyConfig()
 	snapshotCache := cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{})
 	startXdsServer(snapshotCache)
+	kubeClient, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Fatalf("Error creating kube client: %v", err)
+	}
 
-	for key, value := range config.GetDiscoveryMapping() {
-		kubeClient, err := kubernetes.NewForConfig(cfg)
-		if err != nil {
-			log.Fatalf("error creating kube client: %v", err)
-		}
-		lb := envoy.NewLB(key, envoyConfig, snapshotCache)
+	for _, mapping := range config.GetDiscoveryMapping() {
+		lb := envoy.NewLB(mapping.EnvoyId, envoyConfig, snapshotCache)
 		go lb.HandleEvents()
-		cancelFn := server.StartKubehandler(kubeClient, lb.SvcTrigger, value)
+		cancelFn := server.StartKubehandler(kubeClient, lb.SvcTrigger, mapping.UpstreamEndpointLabel, mapping.Namespace)
 		go cancelOnInterrupt(cancelFn)
 
 		go func() {
 			for {
 				lb.SnapshotRunner()
-				time.Sleep(10 * time.Second)
+				time.Sleep(time.Duration(config.RefreshIntervalInS()) * time.Second)
 			}
 		}()
-
-		log.Printf("running for %s %v\n", key, value)
 	}
-	fmt.Println("waiting in main")
+
+	log.Info("Waiting in main")
 	for {
 		time.Sleep(1000)
 	}
