@@ -6,5 +6,3 @@ operator:
   - envoy_id: stream_2
     upstream_endpoint_label: endpoint_2
     namespace: namespace_2
-  log:
-    level: debug

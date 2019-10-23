@@ -28,6 +28,8 @@ type AppConfig struct {
 func MustLoad(name, path string) {
 	viper.AddConfigPath(path)
 	viper.SetConfigName(name)
+	viper.SetDefault("operator.log.level", "info")
+	viper.SetDefault("operator.refresh_interval_in_s", 10)
 
 	err := viper.ReadInConfig()
 	if err != nil {
@@ -36,7 +38,7 @@ func MustLoad(name, path string) {
 	app.envoyConfig = loadEnvoyConfig()
 
 	err = viper.UnmarshalKey("operator.envoy_discovery_mapping", &app.discoveryMapping)
-	if err != nil {
+	if err != nil || app.discoveryMapping == nil {
 		log.Fatalf("Error loading envoy discovery mapping config - %v\n", err)
 	}
 

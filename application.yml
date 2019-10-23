@@ -22,7 +22,7 @@ envoy:
       host_selection_max_retry_attempts: 3
 operator:
   refresh_interval_in_s: 10
-  envoy_discovery_mapping:
+  envoy_discovery_mapping: ## required config
     - envoy_id: "id1"
       upstream_endpoint_label: "label1=val1"
       namespace: "namespace1"
