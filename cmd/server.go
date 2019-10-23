@@ -53,9 +53,8 @@ func cancelOnInterrupt(cancelFn func()) {
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	log.Printf("Running application: %s\n", cmd.Version)
+	log.Infof("Running application: %s\n", cmd.Version)
 	cfg, err := clientcmd.BuildConfigFromFlags(masterurl, kubeConfig)
-	log.Printf("got config: host: %s pat: %+v\n", cfg.Host, cfg.APIPath)
 	if err != nil {
 		log.Fatal(err)
 	}

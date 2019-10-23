@@ -67,8 +67,22 @@ Node ID should be appropriately set to match the config on Envoy and Operator
 ```
 node:
   cluster: service_greeter
-  id: nodeID //This is Hardcoded at the moment. Cant be changed at the moment.
+  id: id1 
 ```
+
+This can support multiple envoy clusters. It can be configured as follows:
+
+```
+envoy_discovery_mapping:
+  - envoy_id: "id1"
+    upstream_endpoint_label: "label1=val1"
+    namespace: "namespace1"
+  - envoy_id: "id2"
+    upstream_endpoint_label: "label2=val2"
+    namespace: "namespace2"
+```
+
+All the upstreams having a given label (eg: label1=val1) will be registered to the corresponding envoy (eg: id1) in the specified namespace (eg: namespace1).
 
 
 The Envoy should be pointed to the previously created service.
@@ -94,44 +108,4 @@ Where `values.yaml` has the overridden  `files.envoy.yaml` value.
 
 # WIP Issues
 
-1. Svc deletion wont work since the service can no longer be retrieved via api. Need a better way to remove from snapshot.
-2. Takes time for envoy to reflect changes.
-
-
-# TODO
-* read map[cluster]kafkacarlable from config - *DONE*
-* get refresh interval from config - *DONE*
-* make fmt as loggers with loglevel - *DONE*
-* add test for serve
-* add test multiple loadbalancer updating snapshot
-* synchronize goroutines on interrupt
-* Stop operator if there's error with kube handler registration
-
-
-# To Note
-* viper is case insensitive, so nodeID=something as config wouldn't work, will redeploy envoy
-
-# Deployment
-## Appstream envoy Deployment
-* New envoy create with id: appstream
-  - ensure resource limitations
-  - more than one envoy
-  - static ip in svc.yaml
-  - no configs will be available for upstreams
-* old envoy stays with nodeID, (it gets events from existing operator)
-* redeploy lb operator with appstream:heritage=envoy-lb
-* new appstream kafkacar deletion/addition will go to appstream 
-* verify new appstream envoy & old envoy holds same config for cluster
-* update all appstream producers DNS list to point to new appstream
-* dont' kill old envoy as it's serving mainstream traffic
-* ttl for dns should be 30s
-   
-## Mainstream Envoy Deploy:
-* Deploy new envoy with mainstream as node id
-* update kafkacar deployments to have label cluster=mainstream
-* redeploy envoy lb-operator with both appstream:heritage=envoy-lb, mainstream:cluster=mainstream
-* verify new mainstream envoy holds all mainstream kafkacars
-* update all mainstream producers DNS to point to mainstream envoy
-* verify no conns/requests sent to old envoy
-
-## Kill old envoy
+1. Takes time for envoy to reflect changes.

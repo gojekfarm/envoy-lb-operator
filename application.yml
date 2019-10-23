@@ -23,11 +23,11 @@ envoy:
 operator:
   refresh_interval_in_s: 10
   envoy_discovery_mapping:
-    - envoy_id: "appstream"
-      upstream_endpoint_label: "heritage=envoy-lb"
-      namespace: "hermes"
-    - envoy_id: "mainstream"
-      upstream_endpoint_label: "cluster=mainstream"
-      namespace: "hermes"
+    - envoy_id: "id1"
+      upstream_endpoint_label: "label1=val1"
+      namespace: "namespace1"
+    - envoy_id: "id2"
+      upstream_endpoint_label: "label2=val2"
+      namespace: "namespace2"
   log:
     level: info

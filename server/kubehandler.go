@@ -37,7 +37,7 @@ func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType e
 	go loop.Run(20, ctx.Done())
 
 	// Initialise for the beginning
-	serviceList, _ := client.CoreV1().Services(v1.NamespaceAll).List(metav1.ListOptions{LabelSelector: endpointLabel})
+	serviceList, _ := client.CoreV1().Services(namespace).List(metav1.ListOptions{LabelSelector: endpointLabel})
 	for _, svc := range serviceList.Items {
 		triggerfunc(envoy.ADDED, &svc)
 	}

@@ -41,11 +41,6 @@ type EnvoyVHostConfig struct {
 type EnvoyConfig struct {
 	EnvoyVHostConfig
 	EnvoyClusterConfig
-	upstreamMapping map[string]string
-}
-
-func (cfg EnvoyConfig) GetEnvoyToEndpointMapping() map[string]string {
-	return cfg.upstreamMapping
 }
 
 func loadEnvoyConfig() EnvoyConfig {
