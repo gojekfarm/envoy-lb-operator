@@ -13,9 +13,10 @@ type Log struct {
 }
 
 type DiscoveryMap struct {
-	EnvoyId               string `mapstructure:"envoy_id"`
-	UpstreamEndpointLabel string `mapstructure:"upstream_endpoint_label"`
-	Namespace             string `mapstructure:"namespace"`
+	EnvoyId       string `mapstructure:"envoy_id"`
+	UpstreamLabel string `mapstructure:"upstream_label"`
+	EndpointLabel string `mapstructure:"endpoint_label"`
+	Namespace     string `mapstructure:"namespace"`
 }
 
 type AppConfig struct {

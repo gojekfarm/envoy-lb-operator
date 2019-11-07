@@ -9,14 +9,14 @@ import (
 	corev1types "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-//Discovery handles addition, updation and deletion of headless services
-type Discovery struct {
+//SvcDiscovery handles addition, updation and deletion of headless services
+type SvcDiscovery struct {
 	kubehandler.DefaultHandler
 	CoreClient corev1types.CoreV1Interface
 	SVCTrigger func(eventType envoy.LBEventType, svc *corev1.Service)
 }
 
-func (d *Discovery) AddFunc(namespace, name string) error {
+func (d *SvcDiscovery) AddFunc(namespace, name string) error {
 	svc, err := d.CoreClient.Services(namespace).Get(name, v1.GetOptions{})
 	if err != nil {
 		return err
@@ -25,7 +25,7 @@ func (d *Discovery) AddFunc(namespace, name string) error {
 	return nil
 }
 
-func (d *Discovery) UpdateFunc(namespace, name string) error {
+func (d *SvcDiscovery) UpdateFunc(namespace, name string) error {
 	svc, err := d.CoreClient.Services(namespace).Get(name, v1.GetOptions{})
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func (d *Discovery) UpdateFunc(namespace, name string) error {
 	return nil
 }
 
-func (d *Discovery) DeleteFunc(namespace, name string) error {
+func (d *SvcDiscovery) DeleteFunc(namespace, name string) error {
 	//After deletion from kubernetes we won't be getting the service object.
 	//We pass the dummy service with the name so that the deletion action can be triggered.
 	svc := &corev1.Service{

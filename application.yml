@@ -24,10 +24,12 @@ operator:
   refresh_interval_in_s: 10
   envoy_discovery_mapping: ## required config
     - envoy_id: "id1"
-      upstream_endpoint_label: "label1=val1"
+      upstream_label: "label1=val1"
+      endpoint_label: "label2=val2"
       namespace: "namespace1"
     - envoy_id: "id2"
-      upstream_endpoint_label: "label2=val2"
+      upstream_label: "label3=val3"
+      endpoint_label: "label4=val4"
       namespace: "namespace2"
   log:
     level: info

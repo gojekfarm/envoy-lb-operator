@@ -7,9 +7,9 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/config"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
 	"github.com/gojekfarm/envoy-lb-operator/kube"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
-	log "github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -62,6 +62,7 @@ func (lb *LoadBalancer) Close() {
 
 func (lb *LoadBalancer) HandleEvents() {
 	for evt := range lb.events {
+		atomic.AddInt32(&lb.ConfigVersion, 1)
 		switch evt.EventType {
 		case DELETED:
 			delete(lb.upstreams, evt.Svc.Address)
@@ -73,8 +74,11 @@ func (lb *LoadBalancer) HandleEvents() {
 	}
 }
 
-func (lb *LoadBalancer) SnapshotRunner() {
+func (lb *LoadBalancer) EndpointTrigger() {
 	atomic.AddInt32(&lb.ConfigVersion, 1)
+}
+
+func (lb *LoadBalancer) SnapshotRunner() {
 	var clusters []cache.Resource
 
 	targetsByDomain := make(map[string][]cp.Target)

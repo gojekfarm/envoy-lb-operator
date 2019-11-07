@@ -13,17 +13,17 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func filterServices(endpointLabel string) func(*metav1.ListOptions) {
+func filterEvents(endpointLabel string) func(*metav1.ListOptions) {
 	return func(opt *metav1.ListOptions) {
 		opt.LabelSelector = endpointLabel
 	}
 }
 
-func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel, namespace string) context.CancelFunc {
+func StartSvcKubeHandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel, namespace string) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	kubeInformerFactory := kubeinformers.NewFilteredSharedInformerFactory(client, time.Second*1, namespace, filterServices(endpointLabel))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(client, time.Second*1, kubeinformers.WithNamespace(namespace), kubeinformers.WithTweakListOptions(filterEvents(endpointLabel)))
 	informer := kubeInformerFactory.Core().V1().Services().Informer()
-	discoveryHandler := &handler.Discovery{
+	discoveryHandler := &handler.SvcDiscovery{
 		CoreClient: client.CoreV1(),
 		SVCTrigger: triggerfunc,
 		DefaultHandler: kubehandler.DefaultHandler{
@@ -31,7 +31,7 @@ func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType e
 			Synced:   informer.HasSynced,
 		},
 	}
-	loop := kubehandler.NewEventLoop("discovery_queue")
+	loop := kubehandler.NewEventLoop("service_queue")
 	loop.Register(discoveryHandler)
 	go kubeInformerFactory.Start(ctx.Done())
 	go loop.Run(20, ctx.Done())
@@ -41,6 +41,26 @@ func StartKubehandler(client *kubernetes.Clientset, triggerfunc func(eventType e
 	for _, svc := range serviceList.Items {
 		triggerfunc(envoy.ADDED, &svc)
 	}
+
+	return cancel
+}
+
+func StartEndpointKubeHandler(client *kubernetes.Clientset, triggerfunc func(), endpointLabel, namespace string) context.CancelFunc {
+	ctx, cancel := context.WithCancel(context.Background())
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(client, time.Second*1, kubeinformers.WithNamespace(namespace), kubeinformers.WithTweakListOptions(filterEvents(endpointLabel)))
+	informer := kubeInformerFactory.Core().V1().Endpoints().Informer()
+	endpointHandler := &handler.EndpointDiscovery{
+		CoreClient: client.CoreV1(),
+		Trigger:    triggerfunc,
+		DefaultHandler: kubehandler.DefaultHandler{
+			Informer: informer,
+			Synced:   informer.HasSynced,
+		},
+	}
+	loop := kubehandler.NewEventLoop("endpoint_queue")
+	loop.Register(endpointHandler)
+	go loop.Run(20, ctx.Done())
+	go kubeInformerFactory.Start(ctx.Done())
 
 	return cancel
 }

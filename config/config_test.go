@@ -47,17 +47,18 @@ func TestLoadEnvoyConfigSetsDefaultsForOptionalConfigsIfNotConfigured(t *testing
 func TestShouldLoadEnvoyDiscoveryMapping(t *testing.T) {
 	expectedEnvoyDiscoveryMap := []config.DiscoveryMap{
 		{
-			EnvoyId:               "stream_1",
-			UpstreamEndpointLabel: "endpoint_1",
-			Namespace:             "namespace_1",
+			EnvoyId:       "stream_1",
+			UpstreamLabel: "upstream_1",
+			EndpointLabel: "endpoint_1",
+			Namespace:     "namespace_1",
 		},
 		{
-			EnvoyId:               "stream_2",
-			UpstreamEndpointLabel: "endpoint_2",
-			Namespace:             "namespace_2",
+			EnvoyId:       "stream_2",
+			UpstreamLabel: "upstream_2",
+			EndpointLabel: "endpoint_2",
+			Namespace:     "namespace_2",
 		},
 	}
-
 
 	assert.Equal(t, expectedEnvoyDiscoveryMap, config.GetDiscoveryMapping())
 }

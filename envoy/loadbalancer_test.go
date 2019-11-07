@@ -17,13 +17,30 @@ func TestSnapshotVersion(t *testing.T) {
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 }
 
-func TestSnapshotVersionIncrementsOnStore(t *testing.T) {
+func TestSnapshotVersionIncrementsOnHandleEvents(t *testing.T) {
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	assert.Equal(t, int32(0), lb.ConfigVersion)
+	lb.Trigger(envoy.LBEvent{
+		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
+		EventType: envoy.ADDED,
+	})
+	lb.Close()
+	lb.HandleEvents()
+	assert.Equal(t, int32(1), lb.ConfigVersion)
+}
+
+func TestSnapshotVersionDoesNotIncrementOnSnapshotRunner(t *testing.T) {
 	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 	lb.SnapshotRunner()
+	assert.Equal(t, int32(0), lb.ConfigVersion)
+}
+
+func TestSnapshotVersionIncrementsOnEndpointTrigger(t *testing.T) {
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	assert.Equal(t, int32(0), lb.ConfigVersion)
+	lb.EndpointTrigger()
 	assert.Equal(t, int32(1), lb.ConfigVersion)
-	lb.SnapshotRunner()
-	assert.Equal(t, int32(2), lb.ConfigVersion)
 }
 
 func TestInitialState(t *testing.T) {
