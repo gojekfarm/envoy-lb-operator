@@ -124,5 +124,5 @@ func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.Sn
 
 func (lb *LoadBalancer) incrementVersion() {
 	atomic.AddInt32(&lb.ConfigVersion, 1)
-	log.Infof("Incrementing snapshot version to %v\n", &lb.ConfigVersion)
+	log.Infof("Incrementing snapshot version to %v\n", lb.ConfigVersion)
 }
