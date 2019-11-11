@@ -36,12 +36,13 @@ type LBEvent struct {
 //LoadBalancer represents the current state of upstreams for a load balancer
 type LoadBalancer struct {
 	sync.RWMutex
-	events        chan LBEvent
-	upstreams     map[string]kube.Service
-	nodeID        string
-	Config        cache.SnapshotCache
-	ConfigVersion int32
-	EnvoyConfig   config.EnvoyConfig
+	events          chan LBEvent
+	upstreams       map[string]kube.Service
+	nodeID          string
+	Config          cache.SnapshotCache
+	ConfigVersion   int32
+	EnvoyConfig     config.EnvoyConfig
+	AutoRefreshConn bool
 }
 
 func (lb *LoadBalancer) Trigger(evt LBEvent) {
@@ -62,7 +63,7 @@ func (lb *LoadBalancer) Close() {
 
 func (lb *LoadBalancer) HandleEvents() {
 	for evt := range lb.events {
-		atomic.AddInt32(&lb.ConfigVersion, 1)
+		lb.incrementVersion()
 		switch evt.EventType {
 		case DELETED:
 			delete(lb.upstreams, evt.Svc.Address)
@@ -75,10 +76,13 @@ func (lb *LoadBalancer) HandleEvents() {
 }
 
 func (lb *LoadBalancer) EndpointTrigger() {
-	atomic.AddInt32(&lb.ConfigVersion, 1)
+	lb.incrementVersion()
 }
 
 func (lb *LoadBalancer) SnapshotRunner() {
+	if lb.AutoRefreshConn {
+		lb.incrementVersion()
+	}
 	var clusters []cache.Resource
 
 	targetsByDomain := make(map[string][]cp.Target)
@@ -114,6 +118,11 @@ func (lb *LoadBalancer) SnapshotRunner() {
 	}
 }
 
-func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.SnapshotCache) *LoadBalancer {
-	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig}
+func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.SnapshotCache, autoRefreshConn bool) *LoadBalancer {
+	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig, AutoRefreshConn: autoRefreshConn}
+}
+
+func (lb *LoadBalancer) incrementVersion() {
+	atomic.AddInt32(&lb.ConfigVersion, 1)
+	log.Infof("Incrementing snapshot version to %v\n", &lb.ConfigVersion)
 }

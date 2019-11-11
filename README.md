@@ -75,10 +75,10 @@ This can support multiple envoy clusters. It can be configured as follows:
 ```
 envoy_discovery_mapping:
   - envoy_id: "id1"
-    upstream_endpoint_label: "label1=val1"
+    upstream_label: "label1=val1"
     namespace: "namespace1"
   - envoy_id: "id2"
-    upstream_endpoint_label: "label2=val2"
+    upstream_label: "label2=val2"
     namespace: "namespace2"
 ```
 
@@ -105,7 +105,16 @@ Now Following will install Envoy pointing to the previously installed operator a
 
 Where `values.yaml` has the overridden  `files.envoy.yaml` value.
 
+# Envoy connection refresh
+Every time the snapshot version changes, envoy connections are dropped and recreated. The following configs determine the frequency of snapshot updates.
 
-# WIP Issues
-
-1. Takes time for envoy to reflect changes.
+`refresh_interval_in_s` determines the time interval between envoy config updates.
+`auto_refresh_conn` determines whether snaphot version should be incremented at an interval of `refresh_interval_in_s` irrespective of whether the routing config changes or not. If set to false, version will be incremented only when there are service updates.
+```
+envoy_discovery_mapping:
+  - envoy_id: "id1"
+    upstream_label: "label1=val1"
+    endpoint_label: "label2=val2"
+    namespace: "namespace1"
+```
+`endpoint_label` matches all the endpoints with the given label, and updates the snapshot when there are endpoint updates.

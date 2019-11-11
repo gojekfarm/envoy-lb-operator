@@ -13,12 +13,12 @@ import (
 )
 
 func TestSnapshotVersion(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 }
 
 func TestSnapshotVersionIncrementsOnHandleEvents(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -29,22 +29,29 @@ func TestSnapshotVersionIncrementsOnHandleEvents(t *testing.T) {
 	assert.Equal(t, int32(1), lb.ConfigVersion)
 }
 
-func TestSnapshotVersionDoesNotIncrementOnSnapshotRunner(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+func TestSnapshotVersionDoesNotIncrementOnSnapshotRunnerIfAutoRefreshIsDisabled(t *testing.T) {
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 	lb.SnapshotRunner()
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 }
 
+func TestSnapshotVersionIncrementsOnSnapshotRunnerIfAutoRefreshIsEnabled(t *testing.T) {
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), true)
+	assert.Equal(t, int32(0), lb.ConfigVersion)
+	lb.SnapshotRunner()
+	assert.Equal(t, int32(1), lb.ConfigVersion)
+}
+
 func TestSnapshotVersionIncrementsOnEndpointTrigger(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	assert.Equal(t, int32(0), lb.ConfigVersion)
 	lb.EndpointTrigger()
 	assert.Equal(t, int32(1), lb.ConfigVersion)
 }
 
 func TestInitialState(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	sn, _ := lb.Config.GetSnapshot("node1")
 	assert.Equal(t, 1, len(sn.Listeners.Items))
@@ -52,7 +59,7 @@ func TestInitialState(t *testing.T) {
 }
 
 func TestAddedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -69,7 +76,7 @@ func TestAddedUpstream(t *testing.T) {
 func TestAddUpdatedUpstream(t *testing.T) {
 	config.MustLoad("application", "../")
 	envoyConfig := config.GetEnvoyConfig()
-	lb := envoy.NewLB("node1", envoyConfig, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", envoyConfig, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -90,7 +97,7 @@ func TestAddUpdatedUpstream(t *testing.T) {
 }
 
 func TestDeletedUpstream(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -109,7 +116,7 @@ func TestDeletedUpstream(t *testing.T) {
 }
 
 func TestSingleVhostDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/foo", Domain: "*"},
@@ -129,7 +136,7 @@ func TestSingleVhostDifferentPaths(t *testing.T) {
 }
 
 func TestMultipleVhostsDifferentPaths(t *testing.T) {
-	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}))
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
 	lb.SnapshotRunner()
 	lb.Trigger(envoy.LBEvent{
 		Svc:       kube.Service{Address: "foo", Port: uint32(8000), Type: kube.GRPC, Path: "/", Domain: "foo.abc.com"},

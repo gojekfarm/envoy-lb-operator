@@ -37,11 +37,14 @@ func TestLoadEnvoyConfigSetsDefaultsForOptionalConfigsIfNotConfigured(t *testing
 		},
 	}
 
-	config.MustLoad("sample", "./testdata")
+	config.Clear()
+	err := config.MustLoad("sample", "./testdata")
 
+	assert.NoError(t, err)
 	assert.Equal(t, expectedEnvoyConfig, config.GetEnvoyConfig())
 	assert.Equal(t, 10, config.RefreshIntervalInS())
 	assert.Equal(t, "info", config.LogLevel().String())
+	assert.Equal(t, true, config.AutoRefreshConn())
 }
 
 func TestShouldLoadEnvoyDiscoveryMapping(t *testing.T) {
@@ -60,5 +63,36 @@ func TestShouldLoadEnvoyDiscoveryMapping(t *testing.T) {
 		},
 	}
 
+	config.Clear()
+	err := config.MustLoad("sample", "./testdata")
+	assert.NoError(t, err)
 	assert.Equal(t, expectedEnvoyDiscoveryMap, config.GetDiscoveryMapping())
+}
+
+func TestShouldReturnErrorWhenUpstreamLabelIsMissing(t *testing.T) {
+	config.Clear()
+	err := config.MustLoad("missing_upstream_label", "./testdata")
+	assert.Error(t, err)
+	assert.Equal(t, "invalid Configuration of envoy discovery mapping. Please check if envoy_id, namespace and upstream_label are configured", err.Error())
+}
+
+func TestShouldReturnErrorWhenEnvoyIdIsMissing(t *testing.T) {
+	config.Clear()
+	err := config.MustLoad("missing_envoy_id", "./testdata")
+	assert.Error(t, err)
+	assert.Equal(t, "invalid Configuration of envoy discovery mapping. Please check if envoy_id, namespace and upstream_label are configured", err.Error())
+}
+
+func TestShouldReturnErrorWhenNamespaceIsMissing(t *testing.T) {
+	config.Clear()
+	err := config.MustLoad("missing_namespace", "./testdata")
+	assert.Error(t, err)
+	assert.Equal(t, "invalid Configuration of envoy discovery mapping. Please check if envoy_id, namespace and upstream_label are configured", err.Error())
+}
+
+func TestShouldReturnErrorWhenDiscoveryMappingIsMissing(t *testing.T) {
+	config.Clear()
+	err := config.MustLoad("missing_discovery_mapping", "./testdata")
+	assert.Error(t, err)
+	assert.Equal(t, "Error loading envoy discovery mapping config - <nil>", err.Error())
 }

@@ -1,4 +1,5 @@
 operator:
+  auto_refresh_conn: true
   envoy_discovery_mapping:
   - envoy_id: stream_1
     upstream_label: upstream_1

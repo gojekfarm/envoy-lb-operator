@@ -1,0 +1,4 @@
+operator:
+  envoy_discovery_mapping:
+  - envoy_id: stream_1
+    namespace: namespace_1

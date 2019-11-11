@@ -44,7 +44,6 @@ func init() {
 	cliCmd.AddCommand(serveCmd)
 }
 
-
 func cancelOnInterrupt(cancelFn func()) {
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -68,13 +67,15 @@ func serve(cmd *cobra.Command, args []string) {
 	}
 
 	for _, mapping := range config.GetDiscoveryMapping() {
-		lb := envoy.NewLB(mapping.EnvoyId, envoyConfig, snapshotCache)
+		lb := envoy.NewLB(mapping.EnvoyId, envoyConfig, snapshotCache, config.AutoRefreshConn())
 		go lb.HandleEvents()
 		svcCancelFn := server.StartSvcKubeHandler(kubeClient, lb.SvcTrigger, mapping.UpstreamLabel, mapping.Namespace)
 		go cancelOnInterrupt(svcCancelFn)
 
-		epCancelFn := server.StartEndpointKubeHandler(kubeClient, lb.EndpointTrigger, mapping.EndpointLabel, mapping.Namespace)
-		go cancelOnInterrupt(epCancelFn)
+		if mapping.EndpointLabel != "" {
+			epCancelFn := server.StartEndpointKubeHandler(kubeClient, lb.EndpointTrigger, mapping.EndpointLabel, mapping.Namespace)
+			go cancelOnInterrupt(epCancelFn)
+		}
 
 		go func() {
 			for {

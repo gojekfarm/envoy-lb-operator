@@ -7,7 +7,10 @@ import (
 )
 
 func main() {
-	config.MustLoad("application", "./")
+	err := config.MustLoad("application", "./")
+	if err != nil {
+		log.Fatalf("Error while loading config - %v\n", err)
+	}
 	log.SetLevel(config.LogLevel())
 	cmd.Execute()
 }

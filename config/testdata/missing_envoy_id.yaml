@@ -1,0 +1,4 @@
+operator:
+  envoy_discovery_mapping:
+  - upstream_label: upstream_1
+    namespace: namespace_1
