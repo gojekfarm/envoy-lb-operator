@@ -49,10 +49,13 @@ func (lb *LoadBalancer) Trigger(evt LBEvent) {
 	lb.events <- evt
 }
 
-func (lb *LoadBalancer) SyncTrigger(eventType LBEventType, svc *corev1.Service) {
+func (lb *LoadBalancer) InitializeUpstream(serviceList *corev1.ServiceList) {
 	lb.incrementVersion()
-	service := lb.getService(svc)
-	lb.upstreams[service.Address] = service
+	for _, service := range serviceList.Items {
+		svc := lb.getService(&service)
+		lb.upstreams[svc.Address] = svc
+	}
+	log.Debug("Populated all existing upstreams.")
 }
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
@@ -86,6 +89,7 @@ func (lb *LoadBalancer) EndpointTrigger() {
 }
 
 func (lb *LoadBalancer) SnapshotRunner() {
+	log.Debug("Executing Snapshot Runner...")
 	if lb.AutoRefreshConn {
 		lb.incrementVersion()
 	}

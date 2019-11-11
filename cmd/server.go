@@ -14,6 +14,7 @@ import (
 	"github.com/gojekfarm/envoy-lb-operator/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -69,7 +70,12 @@ func serve(cmd *cobra.Command, args []string) {
 	for _, mapping := range config.GetDiscoveryMapping() {
 		lb := envoy.NewLB(mapping.EnvoyId, envoyConfig, snapshotCache, config.AutoRefreshConn())
 		go lb.HandleEvents()
-		svcCancelFn := server.StartSvcKubeHandler(kubeClient, lb.SyncTrigger, mapping.UpstreamLabel, mapping.Namespace)
+
+		// Populate all the existing upstreams during start up
+		serviceList, _ := kubeClient.CoreV1().Services(mapping.Namespace).List(metav1.ListOptions{LabelSelector: mapping.UpstreamLabel})
+		lb.InitializeUpstream(serviceList)
+
+		svcCancelFn := server.StartSvcKubeHandler(kubeClient, lb.SvcTrigger, mapping.UpstreamLabel, mapping.Namespace)
 		go cancelOnInterrupt(svcCancelFn)
 
 		if mapping.EndpointLabel != "" {

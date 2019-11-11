@@ -19,9 +19,9 @@ func filterEvents(endpointLabel string) func(*metav1.ListOptions) {
 	}
 }
 
-func StartSvcKubeHandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), endpointLabel, namespace string) context.CancelFunc {
+func StartSvcKubeHandler(client *kubernetes.Clientset, triggerfunc func(eventType envoy.LBEventType, svc *v1.Service), upstreamLabel, namespace string) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(client, time.Second*1, kubeinformers.WithNamespace(namespace), kubeinformers.WithTweakListOptions(filterEvents(endpointLabel)))
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(client, time.Second*1, kubeinformers.WithNamespace(namespace), kubeinformers.WithTweakListOptions(filterEvents(upstreamLabel)))
 	informer := kubeInformerFactory.Core().V1().Services().Informer()
 	discoveryHandler := &handler.SvcDiscovery{
 		CoreClient: client.CoreV1(),
@@ -33,14 +33,8 @@ func StartSvcKubeHandler(client *kubernetes.Clientset, triggerfunc func(eventTyp
 	}
 	loop := kubehandler.NewEventLoop("service_queue")
 	loop.Register(discoveryHandler)
-	go kubeInformerFactory.Start(ctx.Done())
 	go loop.Run(20, ctx.Done())
-
-	// Initialise for the beginning
-	serviceList, _ := client.CoreV1().Services(namespace).List(metav1.ListOptions{LabelSelector: endpointLabel})
-	for _, svc := range serviceList.Items {
-		triggerfunc(envoy.ADDED, &svc)
-	}
+	go kubeInformerFactory.Start(ctx.Done())
 
 	return cancel
 }
