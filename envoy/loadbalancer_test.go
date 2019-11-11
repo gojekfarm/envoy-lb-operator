@@ -2,14 +2,16 @@ package envoy_test
 
 import (
 	"encoding/json"
+	corev1 "k8s.io/api/core/v1"
 	"testing"
 
 	"github.com/envoyproxy/go-control-plane/pkg/cache"
 	"github.com/gojekfarm/envoy-lb-operator/config"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
-	kube "github.com/gojekfarm/envoy-lb-operator/kube"
+	"github.com/gojekfarm/envoy-lb-operator/kube"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSnapshotVersion(t *testing.T) {
@@ -153,4 +155,40 @@ func TestMultipleVhostsDifferentPaths(t *testing.T) {
 	assert.Equal(t, 1, len(sn.Listeners.Items))
 	//No Easy way to assert
 	//cfg, _ := json.Marshal(sn.Listeners.Items["assert.Equal(t, "", string(cfg))
+}
+
+func TestInitializeMultipleUpstreamsOnStart(t *testing.T) {
+	lb := envoy.NewLB("node1", config.EnvoyConfig{}, cache.NewSnapshotCache(true, envoy.Hasher{}, envoy.Logger{}), false)
+	svc1 := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Port: int32(1234),
+			}},
+		},
+	}
+
+	svc2 := corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "bar",
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Port: int32(1234),
+			}},
+		},
+	}
+	svcList := &corev1.ServiceList{Items: []corev1.Service{svc1, svc2}}
+	expectedSvc1 := kube.Service(kube.Service{Address: "foo", Port: 0x0, Type: 0, Path: "/", Domain: "*"})
+	expectedSvc2 := kube.Service(kube.Service{Address: "bar", Port: 0x0, Type: 0, Path: "/", Domain: "*"})
+
+	lb.InitializeUpstream(svcList)
+
+	assert.Equal(t, int32(1), lb.ConfigVersion)
+	assert.Equal(t, 2, len(lb.Upstreams))
+	assert.Equal(t, expectedSvc1, lb.Upstreams["foo"])
+	assert.Equal(t, expectedSvc2, lb.Upstreams["bar"])
+
 }

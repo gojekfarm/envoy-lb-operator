@@ -33,11 +33,11 @@ type LBEvent struct {
 	EventType LBEventType
 }
 
-//LoadBalancer represents the current state of upstreams for a load balancer
+//LoadBalancer represents the current state of Upstreams for a load balancer
 type LoadBalancer struct {
 	sync.RWMutex
 	events          chan LBEvent
-	upstreams       map[string]kube.Service
+	Upstreams       map[string]kube.Service
 	nodeID          string
 	Config          cache.SnapshotCache
 	ConfigVersion   int32
@@ -53,9 +53,9 @@ func (lb *LoadBalancer) InitializeUpstream(serviceList *corev1.ServiceList) {
 	lb.incrementVersion()
 	for _, service := range serviceList.Items {
 		svc := lb.getService(&service)
-		lb.upstreams[svc.Address] = svc
+		lb.Upstreams[svc.Address] = svc
 	}
-	log.Debug("Populated all existing upstreams.")
+	log.Debug("Populated all existing Upstreams.")
 }
 
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
@@ -75,10 +75,10 @@ func (lb *LoadBalancer) HandleEvents() {
 		lb.incrementVersion()
 		switch evt.EventType {
 		case DELETED:
-			delete(lb.upstreams, evt.Svc.Address)
+			delete(lb.Upstreams, evt.Svc.Address)
 			log.Debugf("Deleting upstream: %v id: %s", evt.Svc, lb.nodeID)
 		default:
-			lb.upstreams[evt.Svc.Address] = evt.Svc
+			lb.Upstreams[evt.Svc.Address] = evt.Svc
 			log.Debugf("Adding upstream: %v id: %s\n", evt.Svc, lb.nodeID)
 		}
 	}
@@ -96,8 +96,8 @@ func (lb *LoadBalancer) SnapshotRunner() {
 	var clusters []cache.Resource
 
 	targetsByDomain := make(map[string][]cp.Target)
-	if len(lb.upstreams) > 0 {
-		for _, svc := range lb.upstreams {
+	if len(lb.Upstreams) > 0 {
+		for _, svc := range lb.Upstreams {
 
 			clusters = append(clusters, svc.Cluster(lb.EnvoyConfig.ConnectTimeoutMs, lb.EnvoyConfig.CircuitBreaker, lb.EnvoyConfig.OutlierDetection))
 			if targetsByDomain[svc.Domain] == nil {
@@ -129,7 +129,7 @@ func (lb *LoadBalancer) SnapshotRunner() {
 }
 
 func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.SnapshotCache, autoRefreshConn bool) *LoadBalancer {
-	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig, AutoRefreshConn: autoRefreshConn}
+	return &LoadBalancer{events: make(chan LBEvent, 10), Upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig, AutoRefreshConn: autoRefreshConn}
 }
 
 func (lb *LoadBalancer) incrementVersion() {
