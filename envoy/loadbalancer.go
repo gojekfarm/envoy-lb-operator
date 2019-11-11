@@ -39,20 +39,29 @@ type LoadBalancer struct {
 	events          chan LBEvent
 	upstreams       map[string]kube.Service
 	nodeID          string
-	Config          cache.SnapshotCache
-	ConfigVersion   int32
-	EnvoyConfig     config.EnvoyConfig
-	AutoRefreshConn bool
+	cache           cache.SnapshotCache
+	cacheVersion    int32
+	envoyConfig     config.EnvoyConfig
+	autoRefreshConn bool
 }
 
 func (lb *LoadBalancer) Trigger(evt LBEvent) {
 	lb.events <- evt
 }
 
+func (lb *LoadBalancer) InitializeUpstream(serviceList *corev1.ServiceList) {
+	lb.incrementVersion()
+	for _, service := range serviceList.Items {
+		svc := lb.getService(&service)
+		lb.upstreams[svc.Address] = svc
+	}
+	log.Debug("Populated all existing upstreams.")
+}
+
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
 	log.Debugf("Received event: %s eventtype: %+v for node: %s", svc, eventType, lb.nodeID)
 	if svc.Spec.ClusterIP == v1.ClusterIPNone {
-		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}})
+		lb.Trigger(LBEvent{EventType: eventType, Svc: lb.getService(svc)})
 	}
 }
 
@@ -80,7 +89,8 @@ func (lb *LoadBalancer) EndpointTrigger() {
 }
 
 func (lb *LoadBalancer) SnapshotRunner() {
-	if lb.AutoRefreshConn {
+	log.Debug("Executing Snapshot Runner...")
+	if lb.autoRefreshConn {
 		lb.incrementVersion()
 	}
 	var clusters []cache.Resource
@@ -89,7 +99,7 @@ func (lb *LoadBalancer) SnapshotRunner() {
 	if len(lb.upstreams) > 0 {
 		for _, svc := range lb.upstreams {
 
-			clusters = append(clusters, svc.Cluster(lb.EnvoyConfig.ConnectTimeoutMs, lb.EnvoyConfig.CircuitBreaker, lb.EnvoyConfig.OutlierDetection))
+			clusters = append(clusters, svc.Cluster(lb.envoyConfig.ConnectTimeoutMs, lb.envoyConfig.CircuitBreaker, lb.envoyConfig.OutlierDetection))
 			if targetsByDomain[svc.Domain] == nil {
 				targetsByDomain[svc.Domain] = []cp.Target{svc.DefaultTarget()}
 			} else {
@@ -99,7 +109,7 @@ func (lb *LoadBalancer) SnapshotRunner() {
 	}
 	vhosts := []route.VirtualHost{}
 	for domain, targets := range targetsByDomain {
-		retryConfig := lb.EnvoyConfig.RetryConfig
+		retryConfig := lb.envoyConfig.RetryConfig
 		vhosts = append(vhosts, cp.VHost(fmt.Sprintf("local_service_%s", domain), []string{domain}, targets, cp.RetryPolicy(retryConfig.RetryOn, retryConfig.RetryPredicate, retryConfig.NumRetries, retryConfig.HostSelectionMaxRetryAttempts)))
 	}
 
@@ -111,18 +121,34 @@ func (lb *LoadBalancer) SnapshotRunner() {
 		log.Errorf("Error %v", err)
 		panic(err)
 	}
-	snapshot := cache.NewSnapshot(fmt.Sprint(lb.ConfigVersion), nil, clusters, nil, []cache.Resource{listener})
-	err = lb.Config.SetSnapshot(lb.nodeID, snapshot)
+	snapshot := cache.NewSnapshot(fmt.Sprint(lb.cacheVersion), nil, clusters, nil, []cache.Resource{listener})
+	err = lb.cache.SetSnapshot(lb.nodeID, snapshot)
 	if err != nil {
 		log.Errorf("snapshot error: %s", err.Error())
 	}
 }
 
 func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.SnapshotCache, autoRefreshConn bool) *LoadBalancer {
-	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, Config: snapshotCache, EnvoyConfig: envoyConfig, AutoRefreshConn: autoRefreshConn}
+	return &LoadBalancer{events: make(chan LBEvent, 10), upstreams: make(map[string]kube.Service), nodeID: nodeID, cache: snapshotCache, envoyConfig: envoyConfig, autoRefreshConn: autoRefreshConn}
 }
 
 func (lb *LoadBalancer) incrementVersion() {
-	atomic.AddInt32(&lb.ConfigVersion, 1)
-	log.Infof("Incrementing snapshot version to %v\n", lb.ConfigVersion)
+	atomic.AddInt32(&lb.cacheVersion, 1)
+	log.Infof("Incrementing snapshot version to %v\n", lb.cacheVersion)
+}
+
+func (lb *LoadBalancer) getService(svc *corev1.Service) kube.Service {
+	return kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}
+}
+
+func (lb *LoadBalancer) GetCacheVersion() int32 {
+	return lb.cacheVersion
+}
+
+func (lb *LoadBalancer) GetCache() cache.SnapshotCache {
+	return lb.cache
+}
+
+func (lb *LoadBalancer) GetUpstreams() map[string]kube.Service {
+	return lb.upstreams
 }
