@@ -49,10 +49,16 @@ func (lb *LoadBalancer) Trigger(evt LBEvent) {
 	lb.events <- evt
 }
 
+func (lb *LoadBalancer) SyncTrigger(eventType LBEventType, svc *corev1.Service) {
+	lb.incrementVersion()
+	service := lb.getService(svc)
+	lb.upstreams[service.Address] = service
+}
+
 func (lb *LoadBalancer) SvcTrigger(eventType LBEventType, svc *corev1.Service) {
 	log.Debugf("Received event: %s eventtype: %+v for node: %s", svc, eventType, lb.nodeID)
 	if svc.Spec.ClusterIP == v1.ClusterIPNone {
-		lb.Trigger(LBEvent{EventType: eventType, Svc: kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}})
+		lb.Trigger(LBEvent{EventType: eventType, Svc: lb.getService(svc)})
 	}
 }
 
@@ -125,4 +131,8 @@ func NewLB(nodeID string, envoyConfig config.EnvoyConfig, snapshotCache cache.Sn
 func (lb *LoadBalancer) incrementVersion() {
 	atomic.AddInt32(&lb.ConfigVersion, 1)
 	log.Infof("Incrementing snapshot version to %v\n", lb.ConfigVersion)
+}
+
+func (lb *LoadBalancer) getService(svc *corev1.Service) kube.Service {
+	return kube.Service{Address: svc.Name, Port: uint32(svc.Spec.Ports[0].TargetPort.IntVal), Type: kube.ServiceType(svc), Path: kube.ServicePath(svc), Domain: kube.ServiceDomain(svc)}
 }

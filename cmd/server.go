@@ -69,7 +69,7 @@ func serve(cmd *cobra.Command, args []string) {
 	for _, mapping := range config.GetDiscoveryMapping() {
 		lb := envoy.NewLB(mapping.EnvoyId, envoyConfig, snapshotCache, config.AutoRefreshConn())
 		go lb.HandleEvents()
-		svcCancelFn := server.StartSvcKubeHandler(kubeClient, lb.SvcTrigger, mapping.UpstreamLabel, mapping.Namespace)
+		svcCancelFn := server.StartSvcKubeHandler(kubeClient, lb.SyncTrigger, mapping.UpstreamLabel, mapping.Namespace)
 		go cancelOnInterrupt(svcCancelFn)
 
 		if mapping.EndpointLabel != "" {
