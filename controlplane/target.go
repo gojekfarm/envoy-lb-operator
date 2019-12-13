@@ -1,6 +1,9 @@
 package controlplane
 
-import "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
+import (
+	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
+	"strings"
+)
 
 func routeMatch(prefix string) route.RouteMatch {
 	return route.RouteMatch{
@@ -31,10 +34,16 @@ type Target struct {
 }
 
 //Route is the route for the current target
-func (t *Target) Route() route.Route {
-	return route.Route{
-		Match:  routeMatch(t.Prefix),
-		Action: routeAction(t.Host, t.ClusterName),
+func (t *Target) Route() []route.Route {
+	var routes []route.Route
+	arr := strings.Split(t.Prefix, ",")
+	for _, p := range arr {
+		if len(p) > 0 {
+			routes = append(routes, route.Route{
+				Match:  routeMatch(p),
+				Action: routeAction(t.Host, t.ClusterName),
+			})
+		}
 	}
-
+	return routes
 }
