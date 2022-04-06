@@ -3,7 +3,7 @@ package envoy
 import (
 	"fmt"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
-	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/gojekfarm/envoy-lb-operator/config"
 	cp "github.com/gojekfarm/envoy-lb-operator/controlplane"
 	"github.com/gojekfarm/envoy-lb-operator/kube"

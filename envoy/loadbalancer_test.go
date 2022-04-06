@@ -5,7 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"testing"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/gojekfarm/envoy-lb-operator/config"
 
 	"github.com/gojekfarm/envoy-lb-operator/envoy"

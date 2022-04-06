@@ -5,7 +5,7 @@ import (
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
-	"github.com/envoyproxy/go-control-plane/pkg/util"
+	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"time"
 )
 
@@ -22,7 +22,7 @@ func ConnectionManager(routeName string, vhosts []route.VirtualHost, drainTimeou
 			},
 		},
 		HttpFilters: []*hcm.HttpFilter{{
-			Name: util.Router,
+			Name: wellknown.Router,
 		}},
 	}
 }

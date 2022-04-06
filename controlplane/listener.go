@@ -4,7 +4,7 @@ import (
 	v2 "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	"github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/config/filter/network/http_connection_manager/v2"
-	"github.com/envoyproxy/go-control-plane/pkg/util"
+	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -19,7 +19,7 @@ func Listener(name, address string, port uint32, connectionManager *hcm.HttpConn
 		Address: TCPAddress(address, port),
 		FilterChains: []listener.FilterChain{{
 			Filters: []listener.Filter{{
-				Name:       util.HTTPConnectionManager,
+				Name:       wellknown.HTTPConnectionManager,
 				ConfigType: &listener.Filter_TypedConfig{TypedConfig: connectionManagerAny},
 			}},
 		}},

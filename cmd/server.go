@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/envoyproxy/go-control-plane/pkg/cache"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v3"
 	"github.com/gojekfarm/envoy-lb-operator/config"
 	"github.com/gojekfarm/envoy-lb-operator/envoy"
 	"github.com/gojekfarm/envoy-lb-operator/server"
